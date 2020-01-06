@@ -1324,6 +1324,8 @@ protected TerminalToken getNextToken0() throws InvalidInputException {
 						if (this.recordLineSeparator) {
 							pushLineSeparator();
 						}
+						if (this.scanningJavadocFormalParts)
+							this.skipToNextJavadocFormalLine();
 					}
 					// inline version of:
 					//isWhiteSpace =
@@ -1692,6 +1694,10 @@ protected TerminalToken getNextToken0() throws InvalidInputException {
 									return TokenNameCOMMENT_BLOCK;
 									*/
 									return token;
+								} else if (isJavadoc) {
+									this.currentPosition = this.startPosition + 3;
+								    skipToNextJavadocFormalLine();
+								    break;
 								}
 							} catch (IndexOutOfBoundsException e) {
 								this.currentPosition--;
@@ -2129,6 +2135,59 @@ protected TerminalToken scanForTextBlock() throws InvalidInputException {
 		throw unterminatedTextBlock();
 	}
 }
+private boolean scanningJavadocFormalParts;
+private void skipToNextJavadocFormalLine() {
+	char[] src = this.source;
+
+	// Loop over the lines of the Javadoc comment. When this method is called, we are at the start of a line.
+lineLoop:
+	for (;;) {
+		char c;
+		// First, consume any leading whitespace and stars.
+	indentationLoop:
+		for (;;) {
+			c = src[this.currentPosition++];
+			switch (c) {
+				case ' ':
+				case '\t':
+				case '\n':
+				case '\r':
+					break;
+				case '*':
+					if (src[this.currentPosition] == '/') {
+						this.currentPosition++;
+						this.scanningJavadocFormalParts = false;
+						return;
+					}
+					break;
+				default:
+					break indentationLoop;
+			}
+		}
+		// Then, check if this is a formal line.
+		if (c == '|') {
+			this.scanningJavadocFormalParts = true;
+			return;
+		}
+		// If not, consume the remainder of the line.
+		for (;;) {
+			c = src[this.currentPosition++];
+			switch (c) {
+				case '*':
+					if (src[this.currentPosition] == '/') {
+						this.currentPosition++;
+						this.scanningJavadocFormalParts = false;
+						return;
+					}
+					break;
+				case '\r':
+				case '\n':
+					continue lineLoop;
+			}
+		}
+	}
+}
+
 public void getNextUnicodeChar()
 	throws InvalidInputException {
 	//VOID
