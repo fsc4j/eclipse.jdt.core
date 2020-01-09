@@ -12422,6 +12422,28 @@ public void recoveryExitFromVariable() {
  */
 public void recoveryTokenCheck() {
 	switch (this.currentToken) {
+		case TokenNameJAVADOC_FORMAL_PART_START:
+			// Skip past the Javadoc comment
+			for (;;) {
+				TerminalToken oldToken = this.currentToken;
+				int oldPosition = this.scanner.currentPosition;
+				try {
+					this.currentToken = this.scanner.getNextToken();
+				} catch (InvalidInputException e) {
+					if (!this.hasReportedError){
+						problemReporter().scannerError(this, e.getMessage());
+						this.hasReportedError = true;
+					}
+					//this.lastCheckPoint = this.scanner.currentPosition;
+					//this.currentToken = 0;
+					//this.restartRecovery = true;
+				}
+				if (oldToken == TokenNameJAVADOC_FORMAL_PART_END) {
+					this.lastCheckPoint = oldPosition;
+					break;
+				}
+			}
+			break;
 		case TokenNameStringLiteral :
 			if (this.recordStringLiterals &&
 					this.checkExternalizeStrings &&
