@@ -640,6 +640,7 @@ public abstract class AbstractMethodDeclaration
 			bindArguments();
 			resolveReceiver();
 			bindThrownExceptions();
+			resolveFormalSpecificationClauses();
 			resolveAnnotations(this.scope, this.annotations, this.binding, this.isConstructor());
 			resolveStatements();
 			// check @Deprecated annotation presence
@@ -652,6 +653,15 @@ public abstract class AbstractMethodDeclaration
 			// ========= abort on fatal error =============
 			this.ignoreFurtherInvestigation = true;
 		}
+	}
+
+	private void resolveFormalSpecificationClauses() {
+		if (this.preconditions != null)
+			for (Expression e : this.preconditions)
+				e.resolveTypeExpecting(this.scope, TypeBinding.BOOLEAN);
+//		if (this.postconditions != null)
+//			for (Expression e : this.postconditions)
+//				e.resolveTypeExpecting(this.scope, TypeBinding.BOOLEAN);
 	}
 
 	public void resolveReceiver() {
