@@ -2,7 +2,8 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import java.util.Locale;
 
-public abstract class FormalSpecificationClause extends ASTNode {
+// The fact that this class extends 'Expression' is a hack. It allows instances to be stored in the expressionStack during parsing.
+public class FormalSpecificationClause extends Expression {
 
 	public static enum Tag { PRE, POST }
 
@@ -15,8 +16,7 @@ public abstract class FormalSpecificationClause extends ASTNode {
 	}
 
 	@Override
-	public StringBuilder print(int indent, StringBuilder output) {
-		printIndent(indent, output);
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		output.append("/**@"); //$NON-NLS-1$
 		output.append(this.tag.toString().toLowerCase(Locale.ROOT));
 		output.append(' ');

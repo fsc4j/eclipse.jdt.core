@@ -1020,11 +1020,6 @@ protected void consumeAllocationHeader() {
 	this.lastCheckPoint = this.scanner.startPosition; // force to restart at this exact position
 	this.restartRecovery = true; // request to restart from here on
 }
-protected void consumeJavadocFormalPartsAsModifier() {
-	// For now, discard the expressions
-	this.expressionPtr -= this.expressionLengthStack[this.expressionLengthPtr];
-	this.expressionLengthStack[this.expressionLengthPtr] = 0;
-}
 protected void consumeAnnotationAsModifier() {
 	Expression expression = this.expressionStack[this.expressionPtr];
 	int sourceStart = expression.sourceStart;
@@ -4696,6 +4691,10 @@ protected void consumeMethodHeaderExtendedDims() {
 		}
 	}
 }
+private FormalSpecificationClause.Tag javadocFormalPartTag;
+protected void consumeJavadocFormalPart() {
+	this.expressionStack[this.expressionPtr] = new FormalSpecificationClause(this.javadocFormalPartTag, this.expressionStack[this.expressionPtr]);
+}
 protected void consumeMethodHeaderName(boolean isAnnotationMethod) {
 	// MethodHeaderName ::= Modifiersopt Type 'Identifier' '('
 	// AnnotationMethodHeaderName ::= Modifiersopt Type 'Identifier' '('
@@ -4718,15 +4717,50 @@ protected void consumeMethodHeaderName(boolean isAnnotationMethod) {
 	//modifiers
 	md.declarationSourceStart = this.intStack[this.intPtr--];
 	md.modifiers = this.intStack[this.intPtr--];
-	// consume annotations
+	// consume annotations and javadoc formal parts
 	int length;
 	if ((length = this.expressionLengthStack[this.expressionLengthPtr--]) != 0) {
-		System.arraycopy(
-			this.expressionStack,
-			(this.expressionPtr -= length) + 1,
-			md.annotations = new Annotation[length],
-			0,
-			length);
+		try {
+			System.arraycopy(
+				this.expressionStack,
+				(this.expressionPtr -= length) + 1,
+				md.annotations = new Annotation[length],
+				0,
+				length);
+		} catch (ArrayStoreException ex) {
+			// We have some javadoc formal parts
+			ArrayList<Annotation> annotations = new ArrayList<>();
+			ArrayList<Expression> preconditions = new ArrayList<>();
+			ArrayList<Expression> postconditions = new ArrayList<>();
+			for (int i = 0; i < length; i++) {
+				Expression e = this.expressionStack[this.expressionPtr + 1 + i];
+				if (e instanceof Annotation)
+					annotations.add((Annotation)e);
+				else {
+					FormalSpecificationClause clause = (FormalSpecificationClause)e;
+					switch (clause.tag) {
+						case PRE: preconditions.add(clause.expression); break;
+						case POST: postconditions.add(clause.expression); break;
+						default:
+							// TODO: Report a problem
+							throw new AssertionError();
+					}
+				}
+			}
+			if (!annotations.isEmpty()) {
+				md.annotations = new Annotation[annotations.size()];
+				annotations.toArray(md.annotations);
+			} else
+				md.annotations = null;
+			if (!preconditions.isEmpty()) {
+				md.preconditions = new Expression[preconditions.size()];
+				preconditions.toArray(md.preconditions);
+			}
+			if (!postconditions.isEmpty()) {
+				md.postconditions = new Expression[postconditions.size()];
+				postconditions.toArray(md.postconditions);
+			}
+		}
 	}
 	// javadoc
 	md.javadoc = this.javadoc;
@@ -6315,14 +6349,14 @@ protected void consumeRule(int act) {
     case 193 : if (DEBUG) { System.out.println("Modifiers ::= Modifiers Modifier"); }  //$NON-NLS-1$
 		    consumeModifiers2(); 			break;
 
-    case 207 : if (DEBUG) { System.out.println("Modifier ::= JAVADOC_FORMAL_PART_START..."); }  //$NON-NLS-1$
-		    consumeJavadocFormalPartsAsModifier(); 			break;
-
     case 208 : if (DEBUG) { System.out.println("Modifier ::= Annotation"); }  //$NON-NLS-1$
 		    consumeAnnotationAsModifier(); 			break;
 
+    case 209 : if (DEBUG) { System.out.println("JavadocFormalParts ::= Expression"); }  //$NON-NLS-1$
+		    consumeJavadocFormalPart(); 			break;
+
     case 210 : if (DEBUG) { System.out.println("JavadocFormalParts ::= JavadocFormalParts..."); }  //$NON-NLS-1$
-		    concatExpressionLists(); 			break;
+		    consumeJavadocFormalPart(); concatExpressionLists(); 			break;
 
     case 211 : if (DEBUG) { System.out.println("ClassDeclaration ::= ClassHeader ClassBody"); }  //$NON-NLS-1$
 		    consumeClassDeclaration(); 			break;
@@ -9189,6 +9223,10 @@ protected void consumeToken(TerminalToken type) {
 		case TokenNameMULTIPLY :
 			// star end position
 			pushOnIntStack(this.scanner.currentPosition - 1);
+			break;
+		case TokenNameJAVADOC_FORMAL_PART_START:
+		case TokenNameJAVADOC_FORMAL_PART_SEPARATOR:
+			this.javadocFormalPartTag = this.scanner.javadocFormalPartTag;
 			break;
 			//  case TokenNameCOMMA :
 			//  case TokenNameCOLON  :
