@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Formal Specifications Checker for Java Runtime
+Bundle-SymbolicName: io.github.fsc4j.runtime
+Bundle-Version: 0.7.5.qualifier
+Automatic-Module-Name: io.github.fsc4j
+Bundle-RequiredExecutionEnvironment: JavaSE-11

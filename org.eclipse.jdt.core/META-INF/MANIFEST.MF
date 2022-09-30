@@ -64,7 +64,8 @@ Require-Bundle: org.eclipse.core.resources;bundle-version="[3.14.0,4.0.0)",
  org.eclipse.core.runtime;bundle-version="[3.13.0,4.0.0)",
  org.eclipse.core.filesystem;bundle-version="[1.7.0,2.0.0)",
  org.eclipse.text;bundle-version="[3.6.0,4.0.0)",
- org.eclipse.team.core;bundle-version="[3.1.0,4.0.0)";resolution:=optional
+ org.eclipse.team.core;bundle-version="[3.1.0,4.0.0)";resolution:=optional,
+ io.github.fsc4j.runtime;bundle-version="0.7.5"
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Eclipse-ExtensibleAPI: true
 Bundle-ActivationPolicy: lazy
