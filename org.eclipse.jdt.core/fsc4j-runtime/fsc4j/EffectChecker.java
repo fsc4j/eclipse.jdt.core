@@ -95,8 +95,10 @@ interface RelatedObjectIterator {
 }
 
 class ClassInfo {
-	RelatedObjectIterator representationObjectIterator;
-	RelatedObjectIterator peerObjectIterator;
+	RelatedObjectIterator classLevelRepresentationObjectIterator;
+	RelatedObjectIterator classLevelPeerObjectIterator;
+	RelatedObjectIterator packageLevelRepresentationObjectIterator;
+	RelatedObjectIterator packageLevelPeerObjectIterator;
 }
 
 enum PermissionLevel {
@@ -200,65 +202,168 @@ public class EffectChecker {
 			addPermissionFor(classObject, object, level);
 		}
 		
-		private void requiresPermission1(Object object, Class<?> classObject, PermissionLevel level) {
+		private void requiresPermission1Internal(Object object, Class<?> classObject, PermissionLevel level) {
 			if (classObject != Object.class) {
 				requiresPermission0(object, classObject, level);
-				requiresPermission1(object, classObject.getSuperclass(), level);
 				ClassInfo classInfo = getClassInfo(classObject);
 				if (classInfo != null) {
-					classInfo.representationObjectIterator.forEachRelatedObject(object, repObject -> {
-						requiresPermission(repObject, repObject.getClass(), level);
+					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
+						requiresPermissionPublic(repObject, repObject.getClass(), level);
 					});
 				}
 			}
 		}
 		
-		private void requiresPeerGroupPermission(Object object, Class<?> classObject, PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
-			requiresPermission1(object, classObject, level);
+		private void requiresPermission1Public(Object object, Class<?> classObject, PermissionLevel level) {
+			if (classObject != Object.class) {
+				requiresPermission0(object, classObject, level);
+				requiresPermission1Public(object, classObject.getSuperclass(), level);
+				ClassInfo classInfo = getClassInfo(classObject);
+				if (classInfo != null) {
+					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
+						requiresPermissionPublic(repObject, repObject.getClass(), level);
+					});
+					classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
+						requiresPermissionPublic(repObject, repObject.getClass(), level);
+					});
+				}
+			}
+		}
+		
+		private void requiresPeerGroupPermissionInternal(Object object, Class<?> classObject, PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
+			requiresPermission1Internal(object, classObject, level);
 			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
 			ClassInfo classInfo = getClassInfo(classObject);
 			if (classInfo != null)
-				classInfo.peerObjectIterator.forEachRelatedObject(object, peerObject -> {
+				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
 					if (!peerObjectsVisited.containsKey(peerObject))
-						requiresPeerGroupPermission(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+						requiresPeerGroupPermissionInternal(peerObject, peerObject.getClass(), level, peerObjectsVisited);
 				});
 		}
 		
-		void requiresPermission(Object object, Class<?> classObject, PermissionLevel level) {
-			requiresPeerGroupPermission(object, classObject, level, new IdentityHashMap<>());
+		private void requiresPeerGroupPermissionPublic(Object object, Class<?> classObject, PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
+			requiresPermission1Public(object, classObject, level);
+			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
+			ClassInfo classInfo = getClassInfo(classObject);
+			if (classInfo != null) {
+				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
+					if (!peerObjectsVisited.containsKey(peerObject))
+						requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+				});
+				classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
+					if (!peerObjectsVisited.containsKey(peerObject))
+						requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+				});
+			}
 		}
 		
-		public boolean inspects(Object object) {
-			requiresPermission(object, object.getClass(), PermissionLevel.INSPECT);
+		void requiresPermissionInternal(Object object, Class<?> classObject, PermissionLevel level) {
+			requiresPeerGroupPermissionInternal(object, classObject, level, new IdentityHashMap<>());
+		}
+		
+		void requiresPermissionPublic(Object object, Class<?> classObject, PermissionLevel level) {
+			requiresPeerGroupPermissionPublic(object, classObject, level, new IdentityHashMap<>());
+		}
+		
+		public boolean inspectsPrivate(Object object) {
+			requiresPermission0(object, object.getClass(), PermissionLevel.INSPECT);
 			return true;
 		}
 		
-		public boolean inspectsAll(Object[] objects) {
+		public boolean inspectsAllPrivate(Object[] objects) {
 			for (Object object : objects)
-				inspects(object);
+				inspectsPrivate(object);
 			return true;
 		}
 		
-		public boolean inspectsAll(Iterable<Object> objects) {
+		public boolean inspectsAllPrivate(Iterable<Object> objects) {
 			for (Object object : objects)
-				inspects(object);
+				inspectsPrivate(object);
 			return true;
 		}
 		
-		public boolean mutates(Object object) {
-			requiresPermission(object, object.getClass(), PermissionLevel.MUTATE);
+		public boolean mutatesPrivate(Object object) {
+			requiresPermission0(object, object.getClass(), PermissionLevel.MUTATE);
 			return true;
 		}
 		
-		public boolean mutatesAll(Object[] objects) {
+		public boolean mutatesAllPrivate(Object[] objects) {
 			for (Object object : objects)
-				mutates(object);
+				mutatesPrivate(object);
 			return true;
 		}
 		
-		public boolean mutatesAll(Iterable<Object> objects) {
+		public boolean mutatesAllPrivate(Iterable<Object> objects) {
 			for (Object object : objects)
-				mutates(object);
+				mutatesPrivate(object);
+			return true;
+		}
+		
+		public boolean inspectsInternal(Object object) {
+			requiresPermissionInternal(object, object.getClass(), PermissionLevel.INSPECT);
+			return true;
+		}
+		
+		public boolean inspectsAllInternal(Object[] objects) {
+			for (Object object : objects)
+				inspectsInternal(object);
+			return true;
+		}
+		
+		public boolean inspectsAllInternal(Iterable<Object> objects) {
+			for (Object object : objects)
+				inspectsInternal(object);
+			return true;
+		}
+		
+		public boolean mutatesInternal(Object object) {
+			requiresPermissionInternal(object, object.getClass(), PermissionLevel.MUTATE);
+			return true;
+		}
+		
+		public boolean mutatesAllInternal(Object[] objects) {
+			for (Object object : objects)
+				mutatesInternal(object);
+			return true;
+		}
+		
+		public boolean mutatesAllInternal(Iterable<Object> objects) {
+			for (Object object : objects)
+				mutatesInternal(object);
+			return true;
+		}
+		
+		public boolean inspectsPublic(Object object) {
+			requiresPermissionPublic(object, object.getClass(), PermissionLevel.INSPECT);
+			return true;
+		}
+		
+		public boolean inspectsAllPublic(Object[] objects) {
+			for (Object object : objects)
+				inspectsPublic(object);
+			return true;
+		}
+		
+		public boolean inspectsAllPublic(Iterable<Object> objects) {
+			for (Object object : objects)
+				inspectsPublic(object);
+			return true;
+		}
+		
+		public boolean mutatesPublic(Object object) {
+			requiresPermissionPublic(object, object.getClass(), PermissionLevel.MUTATE);
+			return true;
+		}
+		
+		public boolean mutatesAllPublic(Object[] objects) {
+			for (Object object : objects)
+				mutatesPublic(object);
+			return true;
+		}
+		
+		public boolean mutatesAllPublic(Iterable<Object> objects) {
+			for (Object object : objects)
+				mutatesPublic(object);
 			return true;
 		}
 		
