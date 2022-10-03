@@ -78,6 +78,7 @@ public class s4jie2TestSuite {
 	private static final String junitPath = System.getenv("JUNIT_PATH");
 	private static final String junitPlatformConsoleStandalonePath = junitPath;
 	private static final String pathSeparator = System.getProperty("path.separator");
+	private static final String fsc4jRuntimePath = System.getenv("FSC4J_RUNTIME_PATH");
 
 	public static void testCompile(String filename, boolean expectedSuccess, String outExpected, String errExpected) {
 		testCompile(false, filename, expectedSuccess, outExpected, errExpected);
@@ -91,7 +92,7 @@ public class s4jie2TestSuite {
 		String path = "s4jie2-tests/src/" + filename + ".java";
 		String fullPath = new File(path).getAbsolutePath();
 		String moduleArgs = asModule ? "--module-source-path s4jie2-tests/src s4jie2-tests/src/module-info.java" : "";
-		String args = "-source 10 -proc:none " + moduleArgs + " " + path + " -g -d " + binPath + "/" + filename;
+		String args = "-cp \"" + fsc4jRuntimePath + "\" -source 10 -proc:none " + moduleArgs + " " + path + " -g -d " + binPath + "/" + filename;
 		if (Main.compile(args, new PrintWriter(outWriter), new PrintWriter(errWriter)) != expectedSuccess) {
 			System.err.println("FAIL compiler success: expected: " + expectedSuccess + "; actual: " + !expectedSuccess);
 			System.err.println("=== standard output start ===");

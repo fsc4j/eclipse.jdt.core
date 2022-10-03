@@ -5,3 +5,4 @@ Bundle-SymbolicName: io.github.fsc4j.runtime
 Bundle-Version: 0.7.5.qualifier
 Automatic-Module-Name: io.github.fsc4j
 Bundle-RequiredExecutionEnvironment: JavaSE-11
+Export-Package: fsc4j

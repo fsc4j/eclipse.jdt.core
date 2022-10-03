@@ -872,6 +872,8 @@ private void writeFsc4jRuntimeClassFiles(SourceFile compilationUnit) throws Core
 			break;
 		try {
 			try (InputStream input = Main.class.getClassLoader().getResourceAsStream(filename)) {
+				if (input == null)
+					throw new AssertionError("FSC4J: Cannot load FSC4J runtime classes"); //$NON-NLS-1$
 				file.create(input, IResource.FORCE | IResource.DERIVED, null);
 			}
 		} catch (IOException e) {

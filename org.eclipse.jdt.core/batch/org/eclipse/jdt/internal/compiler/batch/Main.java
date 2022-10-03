@@ -4667,16 +4667,15 @@ private static boolean isParentOf(char[] folderName, char[] fileName) {
 	return true;
 }
 public static final String[] fsc4jRuntimeFilenames = {
-		"fsc4j/EffectChecker.class",
-		"fsc4j/WeakConcurrentIdentityHashMap.class",
-		"fsc4j/UnitType.class",
 		"fsc4j/ClassInfo.class",
+		"fsc4j/EffectChecker.class",
 		"fsc4j/EffectChecker$SpecificationFrame.class",
 		"fsc4j/PermissionLevel.class",
-		"fsc4j/WeakConcurrentIdentityHashMap$1.class",
-		"fsc4j/EffectChecker.class",
 		"fsc4j/RelatedObjectIterator.class",
-		"fsc4j/WeakConcurrentIdentityHashMap$Key.class"
+		"fsc4j/UnitType.class",
+		"fsc4j/WeakConcurrentIdentityHashMap.class",
+		"fsc4j/WeakConcurrentIdentityHashMap$1.class",
+		"fsc4j/WeakConcurrentIdentityHashMap$Key.class",
 };
 // Dump classfiles onto disk for all compilation units that where successful
 // and do not carry a -d none spec, either directly or inherited from Main.
