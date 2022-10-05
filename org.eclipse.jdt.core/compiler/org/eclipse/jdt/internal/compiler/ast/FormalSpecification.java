@@ -39,6 +39,7 @@ public class FormalSpecification {
 	private static final char[] LAMBDA_PARAMETER2_NAME = " $exception".toCharArray(); //$NON-NLS-1$
 	private static final char[] RESULT_NAME = "result".toCharArray(); //$NON-NLS-1$
 	private static final char[] THROWS_CLAUSES_FAILED_COUNT_VARIABLE_NAME = "$throwsClausesFailedCount".toCharArray(); //$NON-NLS-1$
+	private static final char[] SPEC_FRAME_VARIABLE_NAME = "$specFrame".toCharArray(); //$NON-NLS-1$
 	
 	private static QualifiedTypeReference getTypeReference(String name) {
 		String[] components = name.split("\\."); //$NON-NLS-1$
@@ -47,6 +48,17 @@ public class FormalSpecification {
 		for (int i = 0; i < components.length; i++)
 			sources[i] = components[i].toCharArray();
 		return new QualifiedTypeReference(sources, poss);
+	}
+	
+	private static QualifiedNameReference getQualifiedNameReference(String name, int position) {
+		String[] components = name.split("\\."); //$NON-NLS-1$
+		char[][] sources = new char[components.length][];
+		long[] poss = new long[components.length];
+		for (int i = 0; i < components.length; i++)
+			sources[i] = components[i].toCharArray();
+		for (int i = 0; i < poss.length; i++)
+			poss[i] = (position << 32) | position;
+		return new QualifiedNameReference(sources, poss, position, position);
 	}
 	
 	private static IntLiteral createIntLiteral(int value, int sourceStart, int sourceEnd) {
@@ -62,6 +74,7 @@ public class FormalSpecification {
 	private static QualifiedTypeReference javaUtilFunctionConsumer() { return getTypeReference("java.util.function.Consumer"); } //$NON-NLS-1$
 	private static QualifiedTypeReference javaUtilFunctionBiConsumer() { return getTypeReference("java.util.function.BiConsumer"); } //$NON-NLS-1$
 	private static QualifiedTypeReference javaUtilFunctionSupplier() { return getTypeReference("java.util.function.Supplier"); } //$NON-NLS-1$
+	private static QualifiedTypeReference fsc4jEffectCheckerSpecificationFrame() { return getTypeReference("fsc4j.EffectChecker.SpecificationFrame"); } //$NON-NLS-1$
 
 	private static TypeReference getBoxedType(TypeBinding binding, TypeReference reference) {
 		switch (binding.id) {
@@ -230,6 +243,39 @@ public class FormalSpecification {
 	public void resolve() {
 		if (this.method.ignoreFurtherInvestigation)
 			return;
+		
+		if (this.inspectsExpressions != null || this.mutatesExpressions != null || this.mutatesPropertiesExpressions != null) {
+			Block body = new Block(this.method.explicitDeclarations);
+			body.statements = this.method.statements;
+			if (this.method.statements == null && this.method.explicitDeclarations != 0)
+				throw new AssertionError("FSC4J internal error"); //$NON-NLS-1$
+			
+			MessageSend pushNewFrameCall = new MessageSend();
+			pushNewFrameCall.receiver = getQualifiedNameReference("fsc4j.EffectChecker", this.method.bodyStart); //$NON-NLS-1$
+			pushNewFrameCall.selector = "pushNewFrame".toCharArray(); //$NON-NLS-1$
+			
+			LocalDeclaration specFrameVariableDeclaration = new LocalDeclaration(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart, this.method.bodyStart);
+			specFrameVariableDeclaration.type = fsc4jEffectCheckerSpecificationFrame();
+			specFrameVariableDeclaration.initialization = pushNewFrameCall;
+			
+			MessageSend popCall = new MessageSend();
+			popCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart);
+			popCall.selector = "pop".toCharArray();
+			
+			TryStatement tryStatement = new TryStatement();
+			tryStatement.tryBlock = body;
+			tryStatement.finallyBlock = new Block(0);
+			tryStatement.finallyBlock.statements = new Statement[] {popCall};
+			
+			Block outerBlock = new Block(1);
+			outerBlock.statements = new Statement[] {
+					specFrameVariableDeclaration,
+					tryStatement
+			};
+			
+			this.method.statements = new Statement[] {outerBlock};
+			this.method.explicitDeclarations = 0;
+		}
 		
 		if (this.mayThrowConditions != null)
 			for (Expression e : this.mayThrowConditions)

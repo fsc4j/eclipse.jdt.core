@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.internal.compiler.batch.Main;
 
@@ -59,7 +60,8 @@ public class s4jie2TestSuite {
 			System.exit(1);
 		}
 	}
-	public static String normalize(String text) { return text.replace("\r\n", "\n"); }
+	private static Pattern effectCheckerPattern = Pattern.compile("EffectChecker\\.java:[0-9]+");
+	public static String normalize(String text) { return effectCheckerPattern.matcher(text.replace("\r\n", "\n")).replaceAll("EffectChecker.java:NNN"); }
 	public static void assertEquals(String actual, String expected, String msg) {
 		if (!normalize(actual).equals(normalize(expected))) {
 			System.err.println("FAIL " + msg + " is not as expected");
@@ -116,6 +118,7 @@ public class s4jie2TestSuite {
 		String path = "s4jie2-tests/src_multifile/" + rootDirectory;
 		String fullPath = new File(path).getAbsolutePath();
 		ArrayList<String> classPath = new ArrayList<>();
+		classPath.add(fsc4jRuntimePath);
 		classPath.add(junitPath);
 		if (!rootDirectory.equals("logicalcollections"))
 			classPath.add(multifileBinPath + "/logicalcollections");
@@ -212,7 +215,7 @@ public class s4jie2TestSuite {
 			throw new AssertionError(e);
 		}
 		String stdout = stdoutBuffer.toString().replace("Thanks for using JUnit! Support its development at https://junit.org/sponsoring\n\n", "").trim().replaceFirst("Test run finished after [0-9]+ ms", "Test run finished after XX ms");
-		String stderr = stderrBuffer.toString();
+		String stderr = stderrBuffer.toString().replaceAll("EffectChecker\\.java:[0-9]+", "EffectChecker.java:NNN");
 
 		if ((exitCode == 0) != expectedSuccess) {
 			System.err.println("FAIL execution success: expected: " + expectedSuccess + "; actual: exit code " + exitCode);
@@ -1313,8 +1316,14 @@ public class s4jie2TestSuite {
 				+ "	at Foo.foo$pre(issue23bis.java:2)\n"
 				+ "	at Foo.foo$spec(issue23bis.java)\n"
 				+ "	at Main.main(issue23bis.java:8)\n");
-		testCompileAndRun(true, "effectchecker", true,
-				"public static void fsc4j.EffectChecker.assertCanCreate(java.lang.Object)\n", "");
+		testCompileAndRun(true, "effectchecker", false, "",
+				"Exception in thread \"main\" java.lang.AssertionError: This code does not have permission to mutate this object.\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.assertPermission(EffectChecker.java:176)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.assertCanMutate(EffectChecker.java:192)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.assertCanMutate(EffectChecker.java:196)\n"
+				+ "	at fsc4j.EffectChecker.assertCanMutate(EffectChecker.java:437)\n"
+				+ "	at Main.foo(effectchecker.java:7)\n"
+				+ "	at Main.main(effectchecker.java:37)\n");
 		testCompile("issue32", false, "",
 				"----------\n"
 				+ "1. ERROR in SOURCE_FILE_FULL_PATH (at line 3)\n"
