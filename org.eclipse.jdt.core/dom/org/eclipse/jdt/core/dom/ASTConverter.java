@@ -755,7 +755,11 @@ class ASTConverter {
 			int startPosition = methodDecl.getStartPosition();
 			methodDecl.setSourceRange(startPosition, closingPosition - startPosition + 1);
 
-			org.eclipse.jdt.internal.compiler.ast.Statement[] statements = methodDeclaration.statements;
+			org.eclipse.jdt.internal.compiler.ast.Statement[] statements =
+					methodDeclaration.formalSpecification != null && methodDeclaration.formalSpecification.originalMethodStatements != null ?
+						methodDeclaration.formalSpecification.originalMethodStatements[0]
+					:
+						methodDeclaration.statements;
 
 			start = retrieveStartBlockPosition(methodHeaderEnd, methodDeclaration.bodyStart);
 			if (start == -1) start = methodDeclaration.bodyStart; // use recovery position for body start

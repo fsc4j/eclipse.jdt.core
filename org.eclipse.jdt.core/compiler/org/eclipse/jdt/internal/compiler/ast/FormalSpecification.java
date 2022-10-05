@@ -118,6 +118,7 @@ public class FormalSpecification {
 	}
 
 	public final AbstractMethodDeclaration method;
+	public Statement[][] originalMethodStatements; // null or length == 1
 	public Expression[] invariants; // Package representation invariants are specified in the Javadoc comments for the default access getters.
 	public Expression[] preconditions;
 	public TypeReference[] throwsExceptionTypeNames;
@@ -273,6 +274,7 @@ public class FormalSpecification {
 					tryStatement
 			};
 			
+			this.originalMethodStatements = new Statement[][] {this.method.statements};
 			this.method.statements = new Statement[] {outerBlock};
 			this.method.explicitDeclarations = 0;
 		}
