@@ -218,7 +218,7 @@ public class EffectChecker {
 			if (classObject != Object.class) {
 				requiresPermission0(object, classObject, level);
 				ClassInfo classInfo = getClassInfo(classObject);
-				if (classInfo != null) {
+				if (classInfo != null && classInfo.classLevelRepresentationObjectIterator != null) {
 					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
 						requiresPermissionPublic(repObject, repObject.getClass(), level);
 					});
@@ -232,12 +232,16 @@ public class EffectChecker {
 				requiresPermission1Public(object, classObject.getSuperclass(), level);
 				ClassInfo classInfo = getClassInfo(classObject);
 				if (classInfo != null) {
-					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-						requiresPermissionPublic(repObject, repObject.getClass(), level);
-					});
-					classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-						requiresPermissionPublic(repObject, repObject.getClass(), level);
-					});
+					if (classInfo.classLevelRepresentationObjectIterator != null) {
+						classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
+							requiresPermissionPublic(repObject, repObject.getClass(), level);
+						});
+					}
+					if (classInfo.packageLevelRepresentationObjectIterator != null) {
+						classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
+							requiresPermissionPublic(repObject, repObject.getClass(), level);
+						});
+					}
 				}
 			}
 		}
@@ -246,7 +250,7 @@ public class EffectChecker {
 			requiresPermission1Internal(object, classObject, level);
 			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
 			ClassInfo classInfo = getClassInfo(classObject);
-			if (classInfo != null)
+			if (classInfo != null && classInfo.classLevelPeerObjectIterator != null)
 				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
 					if (!peerObjectsVisited.containsKey(peerObject))
 						requiresPeerGroupPermissionInternal(peerObject, peerObject.getClass(), level, peerObjectsVisited);
@@ -258,14 +262,18 @@ public class EffectChecker {
 			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
 			ClassInfo classInfo = getClassInfo(classObject);
 			if (classInfo != null) {
-				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-					if (!peerObjectsVisited.containsKey(peerObject))
-						requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
-				});
-				classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-					if (!peerObjectsVisited.containsKey(peerObject))
-						requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
-				});
+				if (classInfo.classLevelPeerObjectIterator != null) {
+					classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
+						if (!peerObjectsVisited.containsKey(peerObject))
+							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+					});
+				}
+				if (classInfo.packageLevelPeerObjectIterator != null) {
+					classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
+						if (!peerObjectsVisited.containsKey(peerObject))
+							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+					});
+				}
 			}
 		}
 		
