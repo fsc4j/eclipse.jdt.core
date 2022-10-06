@@ -220,7 +220,8 @@ public class EffectChecker {
 				ClassInfo classInfo = getClassInfo(classObject);
 				if (classInfo != null && classInfo.classLevelRepresentationObjectIterator != null) {
 					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-						requiresPermissionPublic(repObject, repObject.getClass(), level);
+						if (repObject != null)
+							requiresPermissionPublic(repObject, repObject.getClass(), level);
 					});
 				}
 			}
@@ -234,12 +235,14 @@ public class EffectChecker {
 				if (classInfo != null) {
 					if (classInfo.classLevelRepresentationObjectIterator != null) {
 						classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-							requiresPermissionPublic(repObject, repObject.getClass(), level);
+							if (repObject != null)
+								requiresPermissionPublic(repObject, repObject.getClass(), level);
 						});
 					}
 					if (classInfo.packageLevelRepresentationObjectIterator != null) {
 						classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-							requiresPermissionPublic(repObject, repObject.getClass(), level);
+							if (repObject != null)
+								requiresPermissionPublic(repObject, repObject.getClass(), level);
 						});
 					}
 				}
@@ -252,7 +255,7 @@ public class EffectChecker {
 			ClassInfo classInfo = getClassInfo(classObject);
 			if (classInfo != null && classInfo.classLevelPeerObjectIterator != null)
 				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-					if (!peerObjectsVisited.containsKey(peerObject))
+					if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
 						requiresPeerGroupPermissionInternal(peerObject, peerObject.getClass(), level, peerObjectsVisited);
 				});
 		}
@@ -264,29 +267,30 @@ public class EffectChecker {
 			if (classInfo != null) {
 				if (classInfo.classLevelPeerObjectIterator != null) {
 					classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-						if (!peerObjectsVisited.containsKey(peerObject))
+						if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
 							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
 					});
 				}
 				if (classInfo.packageLevelPeerObjectIterator != null) {
 					classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-						if (!peerObjectsVisited.containsKey(peerObject))
+						if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
 							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
 					});
 				}
 			}
 		}
 		
-		void requiresPermissionInternal(Object object, Class<?> classObject, PermissionLevel level) {
+		private void requiresPermissionInternal(Object object, Class<?> classObject, PermissionLevel level) {
 			requiresPeerGroupPermissionInternal(object, classObject, level, new IdentityHashMap<>());
 		}
 		
-		void requiresPermissionPublic(Object object, Class<?> classObject, PermissionLevel level) {
+		private void requiresPermissionPublic(Object object, Class<?> classObject, PermissionLevel level) {
 			requiresPeerGroupPermissionPublic(object, classObject, level, new IdentityHashMap<>());
 		}
 		
 		public boolean inspectsPrivate(Object object) {
-			requiresPermission0(object, object.getClass(), PermissionLevel.INSPECT);
+			if (object != null)
+				requiresPermission0(object, object.getClass(), PermissionLevel.INSPECT);
 			return true;
 		}
 		
@@ -303,7 +307,8 @@ public class EffectChecker {
 		}
 		
 		public boolean mutatesPrivate(Object object) {
-			requiresPermission0(object, object.getClass(), PermissionLevel.MUTATE);
+			if (object != null)
+				requiresPermission0(object, object.getClass(), PermissionLevel.MUTATE);
 			return true;
 		}
 		
@@ -320,7 +325,8 @@ public class EffectChecker {
 		}
 		
 		public boolean inspectsInternal(Object object) {
-			requiresPermissionInternal(object, object.getClass(), PermissionLevel.INSPECT);
+			if (object != null)
+				requiresPermissionInternal(object, object.getClass(), PermissionLevel.INSPECT);
 			return true;
 		}
 		
@@ -337,7 +343,8 @@ public class EffectChecker {
 		}
 		
 		public boolean mutatesInternal(Object object) {
-			requiresPermissionInternal(object, object.getClass(), PermissionLevel.MUTATE);
+			if (object != null)
+				requiresPermissionInternal(object, object.getClass(), PermissionLevel.MUTATE);
 			return true;
 		}
 		
@@ -354,7 +361,8 @@ public class EffectChecker {
 		}
 		
 		public boolean inspectsPublic(Object object) {
-			requiresPermissionPublic(object, object.getClass(), PermissionLevel.INSPECT);
+			if (object != null)
+				requiresPermissionPublic(object, object.getClass(), PermissionLevel.INSPECT);
 			return true;
 		}
 		
@@ -371,7 +379,8 @@ public class EffectChecker {
 		}
 		
 		public boolean mutatesPublic(Object object) {
-			requiresPermissionPublic(object, object.getClass(), PermissionLevel.MUTATE);
+			if (object != null)
+				requiresPermissionPublic(object, object.getClass(), PermissionLevel.MUTATE);
 			return true;
 		}
 		
