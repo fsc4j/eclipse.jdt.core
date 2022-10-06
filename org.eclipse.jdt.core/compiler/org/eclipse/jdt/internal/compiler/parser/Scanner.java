@@ -2338,13 +2338,18 @@ protected int scanForTextBlock() throws InvalidInputException {
 		throw new InvalidInputException(UNTERMINATED_TEXT_BLOCK);
 	}
 }
+public ArrayList<FormalSpecificationClause> javadocNakedFormalClauses; // Clauses without formal part: representationObject(s), peerObject(s) 
 public int javadocFormalPartTagStart;
 public int javadocFormalPartTagEnd;
 public FormalSpecificationClause.Tag javadocFormalPartTag;
 public TypeReference javadocFormalPartTagArgument;
+private static boolean isTagNameCharacter(char c) {
+	return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || c == '_';
+}
 private int skipToNextJavadocFormalLine(boolean insideFormalPart) {
 	char[] src = this.source;
-	String lastTagSeen = null;
+	boolean tagSeen = false;
+	FormalSpecificationClause.Tag lastTagSeen = null;
 	TypeReference lastTagArgumentSeen = null; // tag argument = exception type name in @throws or @may_throw clause
 
 	// Loop over the lines of the Javadoc comment. When this method is called, we are at the start of a line.
@@ -2369,16 +2374,38 @@ lineLoop:
 					break;
 				case '@':
 				{
+					tagSeen = true;
+					if (lastTagSeen != null) {
+						if (this.javadocNakedFormalClauses == null)
+							this.javadocNakedFormalClauses = new ArrayList<>();
+						this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
+					}
 					this.javadocFormalPartTagStart = this.currentPosition;
 					this.currentPosition++;
 					// Check if this the start of a new block tag
 					int tagNameStart = this.currentPosition;
-					while ('a' <= src[this.currentPosition] && src[this.currentPosition] <= 'z' || src[this.currentPosition] == '_')
+					while (isTagNameCharacter(src[this.currentPosition]))
 						this.currentPosition++;
 					this.javadocFormalPartTagEnd = this.currentPosition - 1;
-					lastTagSeen = String.copyValueOf(src, tagNameStart, this.currentPosition - tagNameStart);
+					String tag = String.copyValueOf(src, tagNameStart, this.currentPosition - tagNameStart);
+					switch (tag) {
+						case "invar": lastTagSeen = FormalSpecificationClause.Tag.INVAR; break; //$NON-NLS-1$
+						case "pre": lastTagSeen = FormalSpecificationClause.Tag.PRE; break; //$NON-NLS-1$
+						case "throws": lastTagSeen = FormalSpecificationClause.Tag.THROWS; break; //$NON-NLS-1$
+						case "may_throw": lastTagSeen = FormalSpecificationClause.Tag.MAY_THROW; break; //$NON-NLS-1$
+						case "post": lastTagSeen = FormalSpecificationClause.Tag.POST; break; //$NON-NLS-1$
+						case "inspects": lastTagSeen = FormalSpecificationClause.Tag.INSPECTS; break; //$NON-NLS-1$
+						case "mutates": lastTagSeen = FormalSpecificationClause.Tag.MUTATES; break; //$NON-NLS-1$
+						case "mutates_properties": lastTagSeen = FormalSpecificationClause.Tag.MUTATES_PROPERTIES; break; //$NON-NLS-1$
+						case "creates": lastTagSeen = FormalSpecificationClause.Tag.CREATES; break; //$NON-NLS-1$
+						case "representationObject": lastTagSeen = FormalSpecificationClause.Tag.REPRESENTATION_OBJECT; break;
+						case "representationObjects": lastTagSeen = FormalSpecificationClause.Tag.REPRESENTATION_OBJECTS; break;
+						case "peerObject": lastTagSeen = FormalSpecificationClause.Tag.PEER_OBJECT; break;
+						case "peerObjects": lastTagSeen = FormalSpecificationClause.Tag.PEER_OBJECTS; break;
+						default: lastTagSeen = null; break;
+					}
 					lastTagArgumentSeen = null;
-					if (lastTagSeen.equals("throws") || lastTagSeen.equals("may_throw")) { //$NON-NLS-1$ //$NON-NLS-2$
+					if (lastTagSeen == FormalSpecificationClause.Tag.THROWS || lastTagSeen == FormalSpecificationClause.Tag.MAY_THROW) { //$NON-NLS-1$ //$NON-NLS-2$
 					whitespaceLoop:
 						for (;;) {
 							switch (src[this.currentPosition]) {
@@ -2444,25 +2471,17 @@ lineLoop:
 		// Then, check if this is a formal line.
 		if (src[this.currentPosition] == '|') {
 			this.currentPosition++;
-			if (lastTagSeen == null) {
+			if (!tagSeen) {
 				if (insideFormalPart)
 					return TokenNameNotAToken;
 				// otherwise fall through; this is not a formal part
-			} else
-			newFormalPart: {
+			} else if (lastTagSeen != null) {
+				this.javadocFormalPartTag = lastTagSeen;
 				switch (lastTagSeen) {
-					case "invar": this.javadocFormalPartTag = FormalSpecificationClause.Tag.INVAR; break; //$NON-NLS-1$
-					case "pre": this.javadocFormalPartTag = FormalSpecificationClause.Tag.PRE; break; //$NON-NLS-1$
-					case "throws": this.javadocFormalPartTag = FormalSpecificationClause.Tag.THROWS; this.javadocFormalPartTagArgument = lastTagArgumentSeen; break; //$NON-NLS-1$
-					case "may_throw": this.javadocFormalPartTag = FormalSpecificationClause.Tag.MAY_THROW; this.javadocFormalPartTagArgument = lastTagArgumentSeen; break; //$NON-NLS-1$
-					case "post": this.javadocFormalPartTag = FormalSpecificationClause.Tag.POST; break; //$NON-NLS-1$
-					case "inspects": this.javadocFormalPartTag = FormalSpecificationClause.Tag.INSPECTS; break; //$NON-NLS-1$
-					case "mutates": this.javadocFormalPartTag = FormalSpecificationClause.Tag.MUTATES; break; //$NON-NLS-1$
-					case "mutates_properties": this.javadocFormalPartTag = FormalSpecificationClause.Tag.MUTATES_PROPERTIES; break; //$NON-NLS-1$
-					case "creates": this.javadocFormalPartTag = FormalSpecificationClause.Tag.CREATES; break; //$NON-NLS-1$
+					case THROWS:
+					case MAY_THROW:
+					    this.javadocFormalPartTagArgument = lastTagArgumentSeen; break;
 					default:
-						break newFormalPart;
-						// fall through; this is not a formal part
 				}
 				this.containsAssertKeyword = true; // assert statements will be generated to check the formal parts at run time
 				if (insideFormalPart)
@@ -2490,6 +2509,11 @@ lineLoop:
 					break;
 			}
 		}
+	}
+	if (lastTagSeen != null) {
+		if (this.javadocNakedFormalClauses == null)
+			this.javadocNakedFormalClauses = new ArrayList<>();
+		this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
 	}
 	if (insideFormalPart)
 		return TokenNameJAVADOC_FORMAL_PART_END;

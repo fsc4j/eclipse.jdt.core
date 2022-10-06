@@ -4873,7 +4873,7 @@ private Annotation[] consumeTypeDeclarationAnnotations(TypeDeclaration td) {
 					switch (clause.tag) {
 						case INVAR: clause.addExpression(this, invariants); break;
 						default:
-							// TODO: Report a problem
+							this.problemReporter().fsc4jTagNotAllowedHere(clause);
 					}
 				}
 			}
@@ -4885,6 +4885,11 @@ private Annotation[] consumeTypeDeclarationAnnotations(TypeDeclaration td) {
 			if (!invariants.isEmpty())
 				td.invariants = invariants.toArray(new Expression[invariants.size()]);
 		}
+	}
+	if (this.scanner.javadocNakedFormalClauses != null) {
+		for (FormalSpecificationClause clause : this.scanner.javadocNakedFormalClauses)
+			this.problemReporter().fsc4jTagNotAllowedHere(clause);
+		this.scanner.javadocNakedFormalClauses = null;
 	}
 	return result;
 }
@@ -4911,8 +4916,14 @@ private Annotation[] consumeFieldAnnotations(FieldDeclaration fd) {
 					FormalSpecificationClause clause = (FormalSpecificationClause)e;
 					switch (clause.tag) {
 						case INVAR: clause.addExpression(this, invariants); break;
+						case REPRESENTATION_OBJECT:
+						case REPRESENTATION_OBJECTS:
+						case PEER_OBJECT:
+						case PEER_OBJECTS:
+							// TODO: Process clause
+							break;
 						default:
-							// TODO: Report a problem
+							this.problemReporter().fsc4jTagNotAllowedHere(clause);
 					}
 				}
 			}
@@ -4924,6 +4935,10 @@ private Annotation[] consumeFieldAnnotations(FieldDeclaration fd) {
 			if (!invariants.isEmpty())
 				fd.invariants = invariants.toArray(new Expression[invariants.size()]);
 		}
+	}
+	if (this.scanner.javadocNakedFormalClauses != null) {
+		fd.nakedFormalSpecificationClauses = this.scanner.javadocNakedFormalClauses.toArray(new FormalSpecificationClause[this.scanner.javadocNakedFormalClauses.size()]);
+		this.scanner.javadocNakedFormalClauses = null;
 	}
 	return result;
 }
@@ -4986,8 +5001,13 @@ private Annotation[] consumeAnnotations(AbstractMethodDeclaration md) {
 								createsExpressions = new ArrayList<>();
 							createsExpressions.addAll(Arrays.asList(clause.expressions));
 							break;
+						case REPRESENTATION_OBJECT:
+						case REPRESENTATION_OBJECTS:
+						case PEER_OBJECT:
+						case PEER_OBJECTS:
+							// TODO: Process clause
+							break;
 						default:
-							// TODO: Report a problem
 							throw new AssertionError();
 					}
 				}
@@ -5024,6 +5044,14 @@ private Annotation[] consumeAnnotations(AbstractMethodDeclaration md) {
 					md.formalSpecification.createsExpressions = createsExpressions.toArray(new Expression[createsExpressions.size()]);
 			}
 		}
+	}
+	if (this.scanner.javadocNakedFormalClauses != null) {
+		if (md != null) {
+			if (md.formalSpecification == null)
+				md.formalSpecification = new FormalSpecification(md);
+			md.formalSpecification.nakedClauses = this.scanner.javadocNakedFormalClauses.toArray(new FormalSpecificationClause[this.scanner.javadocNakedFormalClauses.size()]);
+		}
+		this.scanner.javadocNakedFormalClauses = null;
 	}
 	return result;
 }

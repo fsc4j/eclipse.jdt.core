@@ -133,6 +133,8 @@ public class FormalSpecification {
 	public Expression[] mutatesPropertiesExpressions;
 	public Expression[] createsExpressions;
 	
+	public FormalSpecificationClause[] nakedClauses;
+	
 	public LambdaExpression preconditionLambda;
 	public Block block;
 	public LocalDeclaration postconditionVariableDeclaration;

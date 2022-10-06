@@ -57,6 +57,7 @@ public class FieldDeclaration extends AbstractVariableDeclaration {
 	public boolean isARecordComponent; // used in record components
 	
 	public Expression[] invariants;
+	public FormalSpecificationClause[] nakedFormalSpecificationClauses;
 
 public FieldDeclaration() {
 	// for subtypes or conversion
