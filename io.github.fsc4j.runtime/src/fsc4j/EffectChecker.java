@@ -95,10 +95,22 @@ interface RelatedObjectIterator {
 }
 
 class ClassInfo {
-	RelatedObjectIterator classLevelRepresentationObjectIterator;
-	RelatedObjectIterator classLevelPeerObjectIterator;
-	RelatedObjectIterator packageLevelRepresentationObjectIterator;
-	RelatedObjectIterator packageLevelPeerObjectIterator;
+	final RelatedObjectIterator classLevelRepresentationObjectIterator;
+	final RelatedObjectIterator classLevelPeerObjectIterator;
+	final RelatedObjectIterator packageLevelRepresentationObjectIterator;
+	final RelatedObjectIterator packageLevelPeerObjectIterator;
+	
+	ClassInfo(
+			RelatedObjectIterator classLevelRepresentationObjectIterator,
+			RelatedObjectIterator classLevelPeerObjectIterator,
+			RelatedObjectIterator packageLevelRepresentationObjectIterator,
+			RelatedObjectIterator packageLevelPeerObjectIterator
+	) {
+		this.classLevelRepresentationObjectIterator = classLevelRepresentationObjectIterator;
+		this.classLevelPeerObjectIterator = classLevelPeerObjectIterator;
+		this.packageLevelRepresentationObjectIterator = packageLevelRepresentationObjectIterator;
+		this.packageLevelPeerObjectIterator = packageLevelPeerObjectIterator;
+	}
 }
 
 enum PermissionLevel {
@@ -385,13 +397,25 @@ public class EffectChecker {
 	private static final WeakConcurrentIdentityHashMap<Object, WeakConcurrentIdentityHashMap<Class<?>, UnitType>> createdObjectsSet = new WeakConcurrentIdentityHashMap<>();
 	private static final ThreadLocal<SpecificationFrame> specificationStackVariable = new ThreadLocal<>();
 	
-	public synchronized static void registerClassInfo(Class<?> classObject, ClassInfo classInfo) {
+	public synchronized static void registerClassInfo(
+			Class<?> classObject,
+			RelatedObjectIterator classLevelRepresentationObjectIterator,
+			RelatedObjectIterator classLevelPeerObjectIterator,
+			RelatedObjectIterator packageLevelRepresentationObjectIterator,
+			RelatedObjectIterator packageLevelPeerObjectIterator
+	) {
 		if (classInfoMap.containsKey(classObject))
 			throw new AssertionError("The class info for this class has already been registered.");
+		ClassInfo classInfo = new ClassInfo(
+				classLevelRepresentationObjectIterator,
+				classLevelPeerObjectIterator,
+				packageLevelRepresentationObjectIterator,
+				packageLevelPeerObjectIterator
+		);
 		classInfoMap.put(classObject, new WeakReference<>(classInfo));
 	}
 	
-	public synchronized static ClassInfo getClassInfo(Class<?> classObject) {
+	private synchronized static ClassInfo getClassInfo(Class<?> classObject) {
 		WeakReference<ClassInfo> classInfoReference = classInfoMap.get(classObject);
 		if (classInfoReference == null)
 			return null;
