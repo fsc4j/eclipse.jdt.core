@@ -90,21 +90,21 @@ class WeakConcurrentIdentityHashMap<K, V> {
 	
 }
 
-interface RelatedObjectIterator {
-	void forEachRelatedObject(Object subject, Consumer<Object> consumer);
+interface RelatedObjectIterator<T> {
+	void forEachRelatedObject(T subject, Consumer<Object> consumer);
 }
 
 class ClassInfo {
-	final RelatedObjectIterator classLevelRepresentationObjectIterator;
-	final RelatedObjectIterator classLevelPeerObjectIterator;
-	final RelatedObjectIterator packageLevelRepresentationObjectIterator;
-	final RelatedObjectIterator packageLevelPeerObjectIterator;
+	final RelatedObjectIterator<Object> classLevelRepresentationObjectIterator;
+	final RelatedObjectIterator<Object> classLevelPeerObjectIterator;
+	final RelatedObjectIterator<Object> packageLevelRepresentationObjectIterator;
+	final RelatedObjectIterator<Object> packageLevelPeerObjectIterator;
 	
 	ClassInfo(
-			RelatedObjectIterator classLevelRepresentationObjectIterator,
-			RelatedObjectIterator classLevelPeerObjectIterator,
-			RelatedObjectIterator packageLevelRepresentationObjectIterator,
-			RelatedObjectIterator packageLevelPeerObjectIterator
+			RelatedObjectIterator<Object> classLevelRepresentationObjectIterator,
+			RelatedObjectIterator<Object> classLevelPeerObjectIterator,
+			RelatedObjectIterator<Object> packageLevelRepresentationObjectIterator,
+			RelatedObjectIterator<Object> packageLevelPeerObjectIterator
 	) {
 		this.classLevelRepresentationObjectIterator = classLevelRepresentationObjectIterator;
 		this.classLevelPeerObjectIterator = classLevelPeerObjectIterator;
@@ -397,20 +397,21 @@ public class EffectChecker {
 	private static final WeakConcurrentIdentityHashMap<Object, WeakConcurrentIdentityHashMap<Class<?>, UnitType>> createdObjectsSet = new WeakConcurrentIdentityHashMap<>();
 	private static final ThreadLocal<SpecificationFrame> specificationStackVariable = new ThreadLocal<>();
 	
-	public synchronized static void registerClassInfo(
-			Class<?> classObject,
-			RelatedObjectIterator classLevelRepresentationObjectIterator,
-			RelatedObjectIterator classLevelPeerObjectIterator,
-			RelatedObjectIterator packageLevelRepresentationObjectIterator,
-			RelatedObjectIterator packageLevelPeerObjectIterator
+	@SuppressWarnings("unchecked")
+	public synchronized static <T> void registerClassInfo(
+			Class<T> classObject,
+			RelatedObjectIterator<T> classLevelRepresentationObjectIterator,
+			RelatedObjectIterator<T> classLevelPeerObjectIterator,
+			RelatedObjectIterator<T> packageLevelRepresentationObjectIterator,
+			RelatedObjectIterator<T> packageLevelPeerObjectIterator
 	) {
 		if (classInfoMap.containsKey(classObject))
 			throw new AssertionError("The class info for this class has already been registered.");
 		ClassInfo classInfo = new ClassInfo(
-				classLevelRepresentationObjectIterator,
-				classLevelPeerObjectIterator,
-				packageLevelRepresentationObjectIterator,
-				packageLevelPeerObjectIterator
+				(RelatedObjectIterator<Object>)classLevelRepresentationObjectIterator,
+				(RelatedObjectIterator<Object>)classLevelPeerObjectIterator,
+				(RelatedObjectIterator<Object>)packageLevelRepresentationObjectIterator,
+				(RelatedObjectIterator<Object>)packageLevelPeerObjectIterator
 		);
 		classInfoMap.put(classObject, new WeakReference<>(classInfo));
 	}
