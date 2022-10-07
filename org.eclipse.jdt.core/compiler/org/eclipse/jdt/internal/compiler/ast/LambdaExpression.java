@@ -143,7 +143,7 @@ public class LambdaExpression extends FunctionalExpression implements IPolyExpre
 	public boolean allowReferencesToNonEffectivelyFinalOuterLocals;
 	
 	public char[] lambdaMethodSelector;
-
+	public boolean isSynthetic;
 
 	public LambdaExpression(CompilationResult compilationResult, boolean assistNode, boolean requiresGenericSignature) {
 		super(compilationResult);
@@ -1147,6 +1147,9 @@ public class LambdaExpression extends FunctionalExpression implements IPolyExpre
 	}
 
 	LambdaExpression copy() {
+		if (this.isSynthetic)
+			return null;
+		
 		final Parser parser = new Parser(this.enclosingScope.problemReporter(), false);
 		final ICompilationUnit compilationUnit = this.compilationResult.getCompilationUnit();
 		char[] source = compilationUnit != null ? compilationUnit.getContents() : this.text;

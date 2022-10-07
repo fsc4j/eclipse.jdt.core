@@ -331,6 +331,10 @@ public class Clinit extends AbstractMethodDeclaration {
 					}
 				}
 			}
+			if (declaringType.registerClassInfoCall != null) {
+				sourcePosition = declaringType.bodyEnd;
+				declaringType.registerClassInfoCall.generateCode(staticInitializerScope, codeStream);
+			}
 			if (isJava9) {
 				declaringType.binding.generateSyntheticFinalFieldInitialization(codeStream);
 			}

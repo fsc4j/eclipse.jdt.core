@@ -50,7 +50,7 @@ public class FormalSpecification {
 		return new QualifiedTypeReference(sources, poss);
 	}
 	
-	private static QualifiedNameReference getQualifiedNameReference(String name, int position) {
+	public static QualifiedNameReference getQualifiedNameReference(String name, int position) {
 		String[] components = name.split("\\."); //$NON-NLS-1$
 		char[][] sources = new char[components.length][];
 		long[] poss = new long[components.length];

@@ -663,68 +663,188 @@ public class s4jie2TestSuite {
 	    		"----------\n" +
 	    		"4 problems (4 errors)\n");
 	    testCompile("effect_clauses_resolve_error", false, "",
-	    		"----------\n" +
-	    		"1. ERROR in SOURCE_FILE_FULL_PATH (at line 10)\n" +
-	    		"	* @inspects | this, ...stuff, other, zazz, x\n" +
-	    		"	                                     ^^^^\n" +
-	    		"zazz cannot be resolved to a variable\n" +
-	    		"----------\n" +
-	    		"2. ERROR in SOURCE_FILE_FULL_PATH (at line 10)\n" +
-	    		"	* @inspects | this, ...stuff, other, zazz, x\n" +
-	    		"	                                           ^\n" +
-	    		"The field Foo.x is not visible\n" +
-	    		"----------\n" +
-	    		"3. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n" +
-	    		"	* @mutates | quux, bar(3), ...x, x\n" +
-	    		"	                   ^^^\n" +
-	    		"The method bar() in the type Foo is not applicable for the arguments (int)\n" +
-	    		"----------\n" +
-	    		"4. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n" +
-	    		"	* @mutates | quux, bar(3), ...x, x\n" +
-	    		"	                              ^\n" +
-	    		"The field Foo.x is not visible\n" +
-	    		"----------\n" +
-	    		"5. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n" +
-	    		"	* @mutates | quux, bar(3), ...x, x\n" +
-	    		"	                                 ^\n" +
-	    		"The field Foo.x is not visible\n" +
-	    		"----------\n" +
-	    		"6. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                               ^^^^^^\n" +
-	    		"Method calls with arguments are not supported here\n" +
-	    		"----------\n" +
-	    		"7. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                       ^^^^^\n" +
-	    		"Method call expected\n" +
-	    		"----------\n" +
-	    		"8. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                                  ^\n" +
-	    		"Can only iterate over an array or an instance of java.lang.Iterable\n" +
-	    		"----------\n" +
-	    		"9. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                                  ^\n" +
-	    		"The field Foo.x is not visible\n" +
-	    		"----------\n" +
-	    		"10. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                                     ^^^\n" +
-	    		"The method bar() is undefined for the type Object\n" +
-	    		"----------\n" +
-	    		"11. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                                            ^\n" +
-	    		"Method call expected\n" +
-	    		"----------\n" +
-	    		"12. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n" +
-	    		"	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n" +
-	    		"	                                                                          ^^^^\n" +
-	    		"The method quux() is undefined for the type Foo\n" +
-	    		"----------\n" +
-	    		"12 problems (12 errors)\n");
+	    		"----------\n"
+	    		+ "1. ERROR in SOURCE_FILE_FULL_PATH (at line 10)\n"
+	    		+ "	* @inspects | this, ...stuff, other, zazz, x\n"
+	    		+ "	                                     ^^^^\n"
+	    		+ "zazz cannot be resolved to a variable\n"
+	    		+ "----------\n"
+	    		+ "2. ERROR in SOURCE_FILE_FULL_PATH (at line 10)\n"
+	    		+ "	* @inspects | this, ...stuff, other, zazz, x\n"
+	    		+ "	                                           ^\n"
+	    		+ "The field Foo.x is not visible\n"
+	    		+ "----------\n"
+	    		+ "3. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n"
+	    		+ "	* @mutates | quux, bar(3), ...x, x\n"
+	    		+ "	                   ^^^\n"
+	    		+ "The method bar() in the type Foo is not applicable for the arguments (int)\n"
+	    		+ "----------\n"
+	    		+ "4. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n"
+	    		+ "	* @mutates | quux, bar(3), ...x, x\n"
+	    		+ "	                              ^\n"
+	    		+ "The field Foo.x is not visible\n"
+	    		+ "----------\n"
+	    		+ "5. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n"
+	    		+ "	* @mutates | quux, bar(3), ...x, x\n"
+	    		+ "	                                 ^\n"
+	    		+ "The field Foo.x is not visible\n"
+	    		+ "----------\n"
+	    		+ "6. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                               ^^^^^^\n"
+	    		+ "Method calls with arguments are not supported here\n"
+	    		+ "----------\n"
+	    		+ "7. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                       ^^^^^\n"
+	    		+ "Method call expected\n"
+	    		+ "----------\n"
+	    		+ "8. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                                  ^\n"
+	    		+ "Can only iterate over an array or an instance of java.lang.Iterable\n"
+	    		+ "----------\n"
+	    		+ "9. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                                  ^\n"
+	    		+ "The field Foo.x is not visible\n"
+	    		+ "----------\n"
+	    		+ "10. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                                     ^^^\n"
+	    		+ "The method bar() is undefined for the type Object\n"
+	    		+ "----------\n"
+	    		+ "11. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                                            ^\n"
+	    		+ "Method call expected\n"
+	    		+ "----------\n"
+	    		+ "12. ERROR in SOURCE_FILE_FULL_PATH (at line 12)\n"
+	    		+ "	* @mutates_properties | bar(), baz(3), other, (...x).bar(), x, (...stuff).quux()\n"
+	    		+ "	                                                                          ^^^^\n"
+	    		+ "The method quux() is undefined for the type Foo\n"
+	    		+ "----------\n"
+	    		+ "13. ERROR in SOURCE_FILE_FULL_PATH (at line 16)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "14. ERROR in SOURCE_FILE_FULL_PATH (at line 19)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "15. ERROR in SOURCE_FILE_FULL_PATH (at line 22)\n"
+	    		+ "	/** @peerObject */\n"
+	    		+ "	    ^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "16. ERROR in SOURCE_FILE_FULL_PATH (at line 25)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "17. ERROR in SOURCE_FILE_FULL_PATH (at line 28)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "18. ERROR in SOURCE_FILE_FULL_PATH (at line 31)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "19. ERROR in SOURCE_FILE_FULL_PATH (at line 34)\n"
+	    		+ "	/** @peerObject */\n"
+	    		+ "	    ^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "20. ERROR in SOURCE_FILE_FULL_PATH (at line 37)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "21. ERROR in SOURCE_FILE_FULL_PATH (at line 40)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "Can only iterate over an array or an instance of java.lang.Iterable\n"
+	    		+ "----------\n"
+	    		+ "22. ERROR in SOURCE_FILE_FULL_PATH (at line 43)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "Can only iterate over an array or an instance of java.lang.Iterable\n"
+	    		+ "----------\n"
+	    		+ "23. ERROR in SOURCE_FILE_FULL_PATH (at line 46)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "24. ERROR in SOURCE_FILE_FULL_PATH (at line 49)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "25. ERROR in SOURCE_FILE_FULL_PATH (at line 58)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "26. ERROR in SOURCE_FILE_FULL_PATH (at line 61)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "27. ERROR in SOURCE_FILE_FULL_PATH (at line 64)\n"
+	    		+ "	/** @peerObject */\n"
+	    		+ "	    ^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "28. ERROR in SOURCE_FILE_FULL_PATH (at line 67)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "This FSC4J tag is not allowed here\n"
+	    		+ "----------\n"
+	    		+ "29. ERROR in SOURCE_FILE_FULL_PATH (at line 70)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This tag is not applicable to methods that have parameters\n"
+	    		+ "----------\n"
+	    		+ "30. ERROR in SOURCE_FILE_FULL_PATH (at line 73)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "This tag is not applicable to methods that have parameters\n"
+	    		+ "----------\n"
+	    		+ "31. ERROR in SOURCE_FILE_FULL_PATH (at line 76)\n"
+	    		+ "	/** @peerObject */\n"
+	    		+ "	    ^^^^^^^^^^^\n"
+	    		+ "This tag is not applicable to methods that have parameters\n"
+	    		+ "----------\n"
+	    		+ "32. ERROR in SOURCE_FILE_FULL_PATH (at line 79)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "This tag is not applicable to methods that have parameters\n"
+	    		+ "----------\n"
+	    		+ "33. ERROR in SOURCE_FILE_FULL_PATH (at line 82)\n"
+	    		+ "	/** @representationObject */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "The method accept(Object) in the type Consumer<Object> is not applicable for the arguments (void)\n"
+	    		+ "----------\n"
+	    		+ "34. ERROR in SOURCE_FILE_FULL_PATH (at line 85)\n"
+	    		+ "	/** @representationObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^^^^^^^^^^^\n"
+	    		+ "Can only iterate over an array or an instance of java.lang.Iterable\n"
+	    		+ "----------\n"
+	    		+ "35. ERROR in SOURCE_FILE_FULL_PATH (at line 88)\n"
+	    		+ "	/** @peerObject */\n"
+	    		+ "	    ^^^^^^^^^^^\n"
+	    		+ "The method accept(Object) in the type Consumer<Object> is not applicable for the arguments (void)\n"
+	    		+ "----------\n"
+	    		+ "36. ERROR in SOURCE_FILE_FULL_PATH (at line 91)\n"
+	    		+ "	/** @peerObjects */\n"
+	    		+ "	    ^^^^^^^^^^^^\n"
+	    		+ "Can only iterate over an array or an instance of java.lang.Iterable\n"
+	    		+ "----------\n"
+	    		+ "36 problems (36 errors)\n");
 	    testCompileAndRun(true, "effect_clauses_success", true, "", "");
 	    testCompileAndRun(true, "abstract_methods", true, "Success!\n",
 	    		  "java.lang.AssertionError: Precondition does not hold\n"

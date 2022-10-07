@@ -4411,6 +4411,13 @@ public void fsc4jTagNotAllowedHere(ASTNode node) {
 			node.sourceStart,
 			node.sourceEnd);
 }
+public void fsc4jTagNotApplicableToMethodsWithParameters(ASTNode node) {
+	this.handle(32109,
+			new String[] {},
+			new String[] {},
+			node.sourceStart,
+			node.sourceEnd);
+}
 public void invalidField(QualifiedNameReference nameRef, FieldBinding field, int index, TypeBinding searchedType) {
 	//the resolution of the index-th field of qname failed
 	//qname.otherBindings[index] is the binding that has produced the error

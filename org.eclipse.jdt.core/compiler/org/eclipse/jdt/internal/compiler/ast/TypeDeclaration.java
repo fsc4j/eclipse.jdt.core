@@ -85,6 +85,7 @@ public class TypeDeclaration extends Statement implements ProblemSeverities, Ref
 	public int classRepresentationInvariantsCount;
 	public MethodDeclaration packageInvariantsMethod;
 	public int packageRepresentationInvariantsCount;
+	public MessageSend registerClassInfoCall;
 
 	public QualifiedAllocationExpression allocation; // for anonymous only
 	public TypeDeclaration enclosingType; // for member types only
@@ -914,6 +915,10 @@ private void internalAnalyseCode(FlowContext flowContext, FlowInfo flowInfo) {
 			}
 		}
 	}
+	if (this.registerClassInfoCall != null) {
+		staticInitializerContext.handledExceptions = Binding.ANY_EXCEPTION; // tolerate them all, and record them
+		staticFieldInfo = this.registerClassInfoCall.analyseCode(this.staticInitializerScope, staticInitializerContext, staticFieldInfo);
+	}
 	if (this.memberTypes != null) {
 		for (int i = 0, count = this.memberTypes.length; i < count; i++) {
 			if (flowContext != null){ // local type
@@ -1567,6 +1572,378 @@ public void resolve() {
 				}
 				field.resolve(field.isStatic() ? this.staticInitializerScope : this.initializerScope);
 			}
+		}
+		{
+			char[] subjectParameterName = "subject".toCharArray();
+			char[] consumerParameterName = "consumer".toCharArray();
+			ArrayList<Statement> statementsForClassLevelRepresentationObjectIterator = null;
+			ArrayList<Statement> statementsForClassLevelPeerObjectIterator = null;
+			ArrayList<Statement> statementsForPackageLevelRepresentationObjectIterator = null;
+			ArrayList<Statement> statementsForPackageLevelPeerObjectIterator = null;
+			if (this.fields != null) {
+				for (FieldDeclaration field : this.fields) {
+					if (field.nakedFormalSpecificationClauses != null) {
+						for (FormalSpecificationClause clause : field.nakedFormalSpecificationClauses) {
+							switch (clause.tag) {
+								case REPRESENTATION_OBJECT:
+									if (field.isStatic() || (field.modifiers & ClassFileConstants.AccPublic | field.modifiers & ClassFileConstants.AccProtected) != 0)
+										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+									else {
+										MessageSend acceptCall = new MessageSend();
+										long pos = ((long)clause.tagStart << 32) | clause.tagEnd;
+										acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+										acceptCall.selector = "accept".toCharArray();
+										acceptCall.arguments = new Expression[] {
+												new QualifiedNameReference(new char[][] {subjectParameterName, field.name}, new long[] {pos, pos}, clause.tagStart, clause.tagEnd)
+										};
+										acceptCall.sourceStart = clause.tagStart;
+										acceptCall.sourceEnd = clause.tagEnd;
+										acceptCall.nameSourcePosition = pos;
+
+										if ((field.modifiers & ClassFileConstants.AccPrivate) != 0) {
+											if (statementsForClassLevelRepresentationObjectIterator == null)
+												statementsForClassLevelRepresentationObjectIterator = new ArrayList<>();
+											statementsForClassLevelRepresentationObjectIterator.add(acceptCall);
+										} else {
+											if (statementsForPackageLevelRepresentationObjectIterator == null)
+												statementsForPackageLevelRepresentationObjectIterator = new ArrayList<>();
+											statementsForPackageLevelRepresentationObjectIterator.add(acceptCall);
+										}
+									}
+									break;
+								case REPRESENTATION_OBJECTS:
+									if (field.isStatic() || (field.modifiers & ClassFileConstants.AccPublic | field.modifiers & ClassFileConstants.AccProtected) != 0)
+										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+									else {
+										long pos = ((long)clause.tagStart << 32) + clause.tagEnd;
+										char[] elementName = "element".toCharArray();
+										
+										MessageSend acceptCall = new MessageSend();
+										acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+										acceptCall.selector = "accept".toCharArray();
+										acceptCall.arguments = new Expression[] {
+												new SingleNameReference(elementName, pos)
+										};
+										acceptCall.sourceStart = clause.tagStart;
+										acceptCall.sourceEnd = clause.tagEnd;
+										acceptCall.nameSourcePosition = pos;
+
+										LocalDeclaration elementVariable = new LocalDeclaration(elementName, clause.tagStart, clause.tagEnd);
+										elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+										elementVariable.bits |= ASTNode.IsForeachElementVariable;
+										ForeachStatement s = new ForeachStatement(elementVariable, clause.tagStart);
+										s.collection = new QualifiedNameReference(new char[][] {subjectParameterName, field.name}, new long[] {pos, pos}, clause.tagStart, clause.tagEnd);
+										s.action = acceptCall;
+										
+										if ((field.modifiers & ClassFileConstants.AccPrivate) != 0) {
+											if (statementsForClassLevelRepresentationObjectIterator == null)
+												statementsForClassLevelRepresentationObjectIterator = new ArrayList<>();
+											statementsForClassLevelRepresentationObjectIterator.add(s);
+										} else {
+											if (statementsForPackageLevelRepresentationObjectIterator == null)
+												statementsForPackageLevelRepresentationObjectIterator = new ArrayList<>();
+											statementsForPackageLevelRepresentationObjectIterator.add(s);
+										}
+									}
+									break;
+								case PEER_OBJECT:
+									if (field.isStatic() || (field.modifiers & ClassFileConstants.AccPublic | field.modifiers & ClassFileConstants.AccProtected) != 0)
+										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+									else {
+										MessageSend acceptCall = new MessageSend();
+										long pos = ((long)clause.tagStart << 32) | clause.tagEnd;
+										acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+										acceptCall.selector = "accept".toCharArray();
+										acceptCall.arguments = new Expression[] {
+												new QualifiedNameReference(new char[][] {subjectParameterName, field.name}, new long[] {pos, pos}, clause.tagStart, clause.tagEnd)
+										};
+										acceptCall.sourceStart = clause.tagStart;
+										acceptCall.sourceEnd = clause.tagEnd;
+										acceptCall.nameSourcePosition = pos;
+
+										if ((field.modifiers & ClassFileConstants.AccPrivate) != 0) {
+											if (statementsForClassLevelPeerObjectIterator == null)
+												statementsForClassLevelPeerObjectIterator = new ArrayList<>();
+											statementsForClassLevelPeerObjectIterator.add(acceptCall);
+										} else {
+											if (statementsForPackageLevelPeerObjectIterator == null)
+												statementsForPackageLevelPeerObjectIterator = new ArrayList<>();
+											statementsForPackageLevelPeerObjectIterator.add(acceptCall);
+										}
+									}
+									break;
+								case PEER_OBJECTS:
+									if (field.isStatic() || (field.modifiers & ClassFileConstants.AccPublic | field.modifiers & ClassFileConstants.AccProtected) != 0)
+										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+									else {
+										long pos = ((long)clause.tagStart << 32) + clause.tagEnd;
+										char[] elementName = "element".toCharArray();
+										
+										MessageSend acceptCall = new MessageSend();
+										acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+										acceptCall.selector = "accept".toCharArray();
+										acceptCall.arguments = new Expression[] {
+												new SingleNameReference(elementName, pos)
+										};
+										acceptCall.sourceStart = clause.tagStart;
+										acceptCall.sourceEnd = clause.tagEnd;
+										acceptCall.nameSourcePosition = pos;
+
+										LocalDeclaration elementVariable = new LocalDeclaration(elementName, clause.tagStart, clause.tagEnd);
+										elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+										elementVariable.bits |= ASTNode.IsForeachElementVariable;
+										ForeachStatement s = new ForeachStatement(elementVariable, clause.tagStart);
+										s.collection = new QualifiedNameReference(new char[][] {subjectParameterName, field.name}, new long[] {pos, pos}, clause.tagStart, clause.tagEnd);
+										s.action = acceptCall;
+										
+										if ((field.modifiers & ClassFileConstants.AccPrivate) != 0) {
+											if (statementsForClassLevelPeerObjectIterator == null)
+												statementsForClassLevelPeerObjectIterator = new ArrayList<>();
+											statementsForClassLevelPeerObjectIterator.add(s);
+										} else {
+											if (statementsForPackageLevelPeerObjectIterator == null)
+												statementsForPackageLevelPeerObjectIterator = new ArrayList<>();
+											statementsForPackageLevelPeerObjectIterator.add(s);
+										}
+									}
+									break;
+								default:
+									this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+							}
+						}
+					}
+				}
+			}
+			if (this.methods != null) {
+				for (AbstractMethodDeclaration method : this.methods) {
+					if (method.formalSpecification != null && method.formalSpecification.nakedClauses != null) {
+						for (FormalSpecificationClause clause : method.formalSpecification.nakedClauses) {
+							if (method.isStatic())
+								this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+						    else if (method.arguments != null)
+						    	this.scope.problemReporter().fsc4jTagNotApplicableToMethodsWithParameters(clause);
+							else {
+								long pos = ((long)clause.tagStart << 32) | clause.tagEnd;
+								MessageSend inspectorCall = new MessageSend();
+								inspectorCall.receiver = new SingleNameReference(subjectParameterName, pos);
+								inspectorCall.selector = method.selector;
+								inspectorCall.sourceStart = clause.tagStart;
+								inspectorCall.sourceEnd = clause.tagEnd;
+								inspectorCall.nameSourcePosition = pos;
+								
+								switch (clause.tag) {
+									case REPRESENTATION_OBJECT:
+										if ((method.modifiers & (ClassFileConstants.AccProtected | ClassFileConstants.AccPublic)) != 0) {
+											this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+										} else {
+											MessageSend acceptCall = new MessageSend();
+											acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+											acceptCall.selector = "accept".toCharArray();
+											acceptCall.arguments = new Expression[] {
+													inspectorCall
+											};
+											acceptCall.sourceStart = clause.tagStart;
+											acceptCall.sourceEnd = clause.tagEnd;
+											acceptCall.nameSourcePosition = pos;
+											
+											if ((method.modifiers & ClassFileConstants.AccPrivate) != 0) {
+												if (statementsForClassLevelRepresentationObjectIterator == null)
+													statementsForClassLevelRepresentationObjectIterator = new ArrayList<>();
+												statementsForClassLevelRepresentationObjectIterator.add(acceptCall);
+											} else {
+												if (statementsForPackageLevelRepresentationObjectIterator == null)
+													statementsForPackageLevelRepresentationObjectIterator = new ArrayList<>();
+												statementsForPackageLevelRepresentationObjectIterator.add(acceptCall);
+											}
+										}
+										break;
+									case REPRESENTATION_OBJECTS:
+										if ((method.modifiers & (ClassFileConstants.AccProtected | ClassFileConstants.AccPublic)) != 0) {
+											this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+										} else {
+											char[] elementName = "element".toCharArray();
+											
+											MessageSend acceptCall = new MessageSend();
+											acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+											acceptCall.selector = "accept".toCharArray();
+											acceptCall.arguments = new Expression[] {
+													new SingleNameReference(elementName, pos)
+											};
+											acceptCall.sourceStart = clause.tagStart;
+											acceptCall.sourceEnd = clause.tagEnd;
+											acceptCall.nameSourcePosition = pos;
+											
+											LocalDeclaration elementVariable = new LocalDeclaration(elementName, clause.tagStart, clause.tagEnd);
+											elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+											elementVariable.bits |= ASTNode.IsForeachElementVariable;
+											ForeachStatement s = new ForeachStatement(elementVariable, clause.tagStart);
+											s.collection = inspectorCall;
+											s.action = acceptCall;
+											
+											if ((method.modifiers & ClassFileConstants.AccPrivate) != 0) {
+												if (statementsForClassLevelRepresentationObjectIterator == null)
+													statementsForClassLevelRepresentationObjectIterator = new ArrayList<>();
+												statementsForClassLevelRepresentationObjectIterator.add(s);
+											} else {
+												if (statementsForPackageLevelRepresentationObjectIterator == null)
+													statementsForPackageLevelRepresentationObjectIterator = new ArrayList<>();
+												statementsForPackageLevelRepresentationObjectIterator.add(s);
+											}
+										}
+										break;
+									case PEER_OBJECT:
+										if ((method.modifiers & (ClassFileConstants.AccProtected | ClassFileConstants.AccPublic)) != 0) {
+											// ignore
+										} else {
+											MessageSend acceptCall = new MessageSend();
+											acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+											acceptCall.selector = "accept".toCharArray();
+											acceptCall.arguments = new Expression[] {
+													inspectorCall
+											};
+											acceptCall.sourceStart = clause.tagStart;
+											acceptCall.sourceEnd = clause.tagEnd;
+											acceptCall.nameSourcePosition = pos;
+
+											if ((method.modifiers & ClassFileConstants.AccPrivate) != 0) {
+												if (statementsForClassLevelPeerObjectIterator == null)
+													statementsForClassLevelPeerObjectIterator = new ArrayList<>();
+												statementsForClassLevelPeerObjectIterator.add(acceptCall);
+											} else {
+												if (statementsForPackageLevelPeerObjectIterator == null)
+													statementsForPackageLevelPeerObjectIterator = new ArrayList<>();
+												statementsForPackageLevelPeerObjectIterator.add(acceptCall);
+											}
+										}
+										break;
+									case PEER_OBJECTS:
+										if ((method.modifiers & (ClassFileConstants.AccProtected | ClassFileConstants.AccPublic)) != 0) {
+											// ignore
+										} else {
+											char[] elementName = "element".toCharArray();
+											
+											MessageSend acceptCall = new MessageSend();
+											acceptCall.receiver = new SingleNameReference(consumerParameterName, pos);
+											acceptCall.selector = "accept".toCharArray();
+											acceptCall.arguments = new Expression[] {
+													new SingleNameReference(elementName, pos)
+											};
+											acceptCall.sourceStart = clause.tagStart;
+											acceptCall.sourceEnd = clause.tagEnd;
+											acceptCall.nameSourcePosition = pos;
+
+											LocalDeclaration elementVariable = new LocalDeclaration(elementName, clause.tagStart, clause.tagEnd);
+											elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+											elementVariable.bits |= ASTNode.IsForeachElementVariable;
+											ForeachStatement s = new ForeachStatement(elementVariable, clause.tagStart);
+											s.collection = inspectorCall;
+											s.action = acceptCall;
+											
+											if ((method.modifiers & ClassFileConstants.AccPrivate) != 0) {
+												if (statementsForClassLevelPeerObjectIterator == null)
+													statementsForClassLevelPeerObjectIterator = new ArrayList<>();
+												statementsForClassLevelPeerObjectIterator.add(s);
+											} else {
+												if (statementsForPackageLevelPeerObjectIterator == null)
+													statementsForPackageLevelPeerObjectIterator = new ArrayList<>();
+												statementsForPackageLevelPeerObjectIterator.add(s);
+											}
+										}
+										break;
+									default:
+										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
+								}
+							}
+						}
+					}
+				}
+			}
+			if (
+					statementsForClassLevelRepresentationObjectIterator != null ||
+					statementsForClassLevelPeerObjectIterator != null||
+					statementsForPackageLevelRepresentationObjectIterator != null ||
+					statementsForPackageLevelPeerObjectIterator != null
+			) {
+				long pos = ((long)this.bodyStart << 32) | this.bodyStart;
+				
+				LambdaExpression classLevelRepresentationObjectIterator = null;
+				if (statementsForClassLevelRepresentationObjectIterator != null) {
+					Block body = new Block(0);
+					body.statements = statementsForClassLevelRepresentationObjectIterator.toArray(new Statement[statementsForClassLevelRepresentationObjectIterator.size()]);
+					
+					classLevelRepresentationObjectIterator = new LambdaExpression(this.compilationResult, false);
+					classLevelRepresentationObjectIterator.isSynthetic = true;
+					classLevelRepresentationObjectIterator.setArguments(new Argument[] {
+						new Argument(subjectParameterName, pos, null, 0, true),
+						new Argument(consumerParameterName, pos, null, 0, true)
+					});
+					classLevelRepresentationObjectIterator.setBody(body);
+					classLevelRepresentationObjectIterator.sourceStart = this.bodyStart;
+					classLevelRepresentationObjectIterator.sourceEnd = this.bodyEnd;
+				}
+				
+				LambdaExpression classLevelPeerObjectIterator = null;
+				if (statementsForClassLevelPeerObjectIterator != null) {
+					Block body = new Block(0);
+					body.statements = statementsForClassLevelPeerObjectIterator.toArray(new Statement[statementsForClassLevelPeerObjectIterator.size()]);
+					
+					classLevelPeerObjectIterator = new LambdaExpression(this.compilationResult, false);
+					classLevelPeerObjectIterator.isSynthetic = true;
+					classLevelPeerObjectIterator.setArguments(new Argument[] {
+						new Argument(subjectParameterName, pos, null, 0, true),
+						new Argument(consumerParameterName, pos, null, 0, true)
+					});
+					classLevelPeerObjectIterator.setBody(body);
+					classLevelPeerObjectIterator.sourceStart = this.bodyStart;
+					classLevelPeerObjectIterator.sourceEnd = this.bodyEnd;
+				}
+				
+				LambdaExpression packageLevelRepresentationObjectIterator = null;
+				if (statementsForPackageLevelRepresentationObjectIterator != null) {
+					Block body = new Block(0);
+					body.statements = statementsForPackageLevelRepresentationObjectIterator.toArray(new Statement[statementsForPackageLevelRepresentationObjectIterator.size()]);
+					
+					packageLevelRepresentationObjectIterator = new LambdaExpression(this.compilationResult, false);
+					packageLevelRepresentationObjectIterator.isSynthetic = true;
+					packageLevelRepresentationObjectIterator.setArguments(new Argument[] {
+						new Argument(subjectParameterName, pos, null, 0, true),
+						new Argument(consumerParameterName, pos, null, 0, true)
+					});
+					packageLevelRepresentationObjectIterator.setBody(body);
+					packageLevelRepresentationObjectIterator.sourceStart = this.bodyStart;
+					packageLevelRepresentationObjectIterator.sourceEnd = this.bodyEnd;
+				}
+
+				LambdaExpression packageLevelPeerObjectIterator = null;
+				if (statementsForPackageLevelPeerObjectIterator != null) {
+					Block body = new Block(0);
+					body.statements = statementsForPackageLevelPeerObjectIterator.toArray(new Statement[statementsForPackageLevelPeerObjectIterator.size()]);
+					
+					packageLevelPeerObjectIterator = new LambdaExpression(this.compilationResult, false);
+					packageLevelPeerObjectIterator.isSynthetic = true;
+					packageLevelPeerObjectIterator.setArguments(new Argument[] {
+						new Argument(subjectParameterName, pos, null, 0, true),
+						new Argument(consumerParameterName, pos, null, 0, true)
+					});
+					packageLevelPeerObjectIterator.setBody(body);
+					packageLevelPeerObjectIterator.sourceStart = this.bodyStart;
+					packageLevelPeerObjectIterator.sourceEnd = this.bodyEnd;
+				}
+				
+				this.registerClassInfoCall = new MessageSend();
+				this.registerClassInfoCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
+				this.registerClassInfoCall.selector = "registerClassInfo".toCharArray();
+				this.registerClassInfoCall.arguments = new Expression[] {
+						new ClassLiteralAccess(this.bodyStart, new SingleTypeReference(this.name, pos)),
+						classLevelRepresentationObjectIterator == null ? new NullLiteral(this.bodyStart, this.bodyStart) : classLevelRepresentationObjectIterator,
+						classLevelPeerObjectIterator == null ? new NullLiteral(this.bodyStart, this.bodyStart) : classLevelPeerObjectIterator,
+						packageLevelRepresentationObjectIterator == null ? new NullLiteral(this.bodyStart, this.bodyStart) : packageLevelRepresentationObjectIterator,
+						packageLevelPeerObjectIterator == null ? new NullLiteral(this.bodyStart, this.bodyStart) : packageLevelPeerObjectIterator
+				};
+				
+				this.registerClassInfoCall.resolve(this.staticInitializerScope);
+			}
+					
 		}
 		if (this.maxFieldCount < localMaxFieldCount) {
 			this.maxFieldCount = localMaxFieldCount;
