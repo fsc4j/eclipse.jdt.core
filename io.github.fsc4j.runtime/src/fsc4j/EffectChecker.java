@@ -6,7 +6,6 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 enum UnitType { UNIT_VALUE; }
 
@@ -88,10 +87,6 @@ class WeakConcurrentIdentityHashMap<K, V> {
 		}
 	}
 	
-}
-
-interface RelatedObjectIterator<T> {
-	void forEachRelatedObject(T subject, Consumer<Object> consumer);
 }
 
 class ClassInfo {
