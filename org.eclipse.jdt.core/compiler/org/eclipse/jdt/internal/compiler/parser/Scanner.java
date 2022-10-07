@@ -2376,9 +2376,18 @@ lineLoop:
 				{
 					tagSeen = true;
 					if (lastTagSeen != null) {
-						if (this.javadocNakedFormalClauses == null)
-							this.javadocNakedFormalClauses = new ArrayList<>();
-						this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
+						switch (lastTagSeen) {
+							case REPRESENTATION_OBJECT:
+							case REPRESENTATION_OBJECTS:
+							case PEER_OBJECT:
+							case PEER_OBJECTS:
+								if (this.javadocNakedFormalClauses == null)
+									this.javadocNakedFormalClauses = new ArrayList<>();
+								this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
+								break;
+							default:
+								// Ignore tag without formal part
+						}
 					}
 					this.javadocFormalPartTagStart = this.currentPosition;
 					this.currentPosition++;
@@ -2511,9 +2520,18 @@ lineLoop:
 		}
 	}
 	if (lastTagSeen != null) {
-		if (this.javadocNakedFormalClauses == null)
-			this.javadocNakedFormalClauses = new ArrayList<>();
-		this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
+		switch (lastTagSeen) {
+			case REPRESENTATION_OBJECT:
+			case REPRESENTATION_OBJECTS:
+			case PEER_OBJECT:
+			case PEER_OBJECTS:
+				if (this.javadocNakedFormalClauses == null)
+					this.javadocNakedFormalClauses = new ArrayList<>();
+				this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
+				break;
+			default:
+				// Ignore tag without formal part
+		}
 	}
 	if (insideFormalPart)
 		return TokenNameJAVADOC_FORMAL_PART_END;
