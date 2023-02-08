@@ -200,6 +200,12 @@ public boolean isOutputFolder() {
 
 @Override
 public boolean isPackage(String qualifiedPackageName, String moduleName) {
+	if (this.isOutputFolder && "fsc4j".equals(qualifiedPackageName)) { //$NON-NLS-1$
+		// Make sure Eclipse doesn't see the FSC4J runtime files copied to the project's
+		// bin folder; otherwise it complains about the same package 'fsc4j' being
+		// accessible from multiple modules.
+		return false;
+	}
 	if (moduleName != null) {
 		if (this.module == null || !moduleName.equals(String.valueOf(this.module.name())))
 			return false;
