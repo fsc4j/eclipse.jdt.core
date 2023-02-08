@@ -6,6 +6,8 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.logging.Logger;
 
 enum UnitType { UNIT_VALUE; }
 
@@ -61,6 +63,11 @@ class WeakConcurrentIdentityHashMap<K, V> {
 		void remove() {
 			WeakConcurrentIdentityHashMap.this.map.remove(this);
 		}
+		
+		@Override
+		public String toString() {
+			return Integer.toHexString(this.hashCode);
+		}
 	}
 	
 	public void put(K key, V value) {
@@ -69,6 +76,10 @@ class WeakConcurrentIdentityHashMap<K, V> {
 	
 	public V putIfAbsent(K key, V value) {
 		return this.map.putIfAbsent(new Key(key), value);
+	}
+	
+	public boolean replace(K key, V oldValue, V newValue) {
+		return this.map.replace(new Key(key), oldValue, newValue);
 	}
 
 	public V get(K key) {
@@ -85,6 +96,11 @@ class WeakConcurrentIdentityHashMap<K, V> {
 			if (referent != null)
 				consumer.accept(referent, this.map.get(key));
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return map.toString();
 	}
 	
 }
@@ -128,67 +144,92 @@ enum PermissionLevel {
 	
 }
 
+enum PermissionToken {
+	CLAIMED_INSPECT,
+	DELEGATED_INSPECT,
+	IMMUTABLE,
+	MUTATE;
+}
+
 public class EffectChecker {
+	
+	private static final Logger logger = Logger.getLogger("fsc4j.EffectChecker");
 	
 	public static class SpecificationFrame {
 		
 		private final SpecificationFrame enclosingFrame;
-		private final WeakConcurrentIdentityHashMap<Object, WeakHashMap<Class<?>, PermissionLevel>> permissions = new WeakConcurrentIdentityHashMap<>();
+		private final WeakConcurrentIdentityHashMap<Object, WeakHashMap<Class<?>, PermissionToken>> permissions = new WeakConcurrentIdentityHashMap<>();
 
 		private SpecificationFrame(SpecificationFrame enclosingFrame) {
 			this.enclosingFrame = enclosingFrame;
 		}
 		
-		private PermissionLevel getPermissionLevelFor(Class<?> classObject, Object object) {
-			WeakHashMap<Class<?>, PermissionLevel> map = this.permissions.get(object);
-			if (map == null)
-				return PermissionLevel.NONE;
-			return map.getOrDefault(classObject, PermissionLevel.NONE);
-		}
-		
-		private void addPermissionFor(Class<?> classObject, Object object, PermissionLevel permissionLevel) {
-			WeakHashMap<Class<?>, PermissionLevel> map = this.permissions.get(object);
+		private WeakHashMap<Class<?>, PermissionToken> getPermissionMapForObject(Object object) {
+			WeakHashMap<Class<?>, PermissionToken> map = this.permissions.get(object);
 			if (map == null) {
 				map = new WeakHashMap<>();
 				this.permissions.put(object, map);
 			}
-			map.put(classObject, PermissionLevel.max(map.getOrDefault(classObject, PermissionLevel.NONE), permissionLevel));
+			return map;
 		}
 		
-		void assertCanCreate0(Object object, Class<?> classObject) {
-			WeakConcurrentIdentityHashMap<Class<?>, UnitType> map0 = new WeakConcurrentIdentityHashMap<>(); 
-			WeakConcurrentIdentityHashMap<Class<?>, UnitType> map = createdObjectsSet.putIfAbsent(object, map0);
-			if (map == null)
-				map = map0;
-			UnitType value = map.putIfAbsent(classObject, UnitType.UNIT_VALUE);
-			if (value == null)
-				addPermissionFor(classObject, object, PermissionLevel.MUTATE);
+		private void addPermissionFor(Class<?> classObject, Object object, PermissionToken token) {
+			WeakHashMap<Class<?>, PermissionToken> map = getPermissionMapForObject(object);
+			PermissionToken oldToken = map.get(classObject);
+			if (oldToken == null || token == PermissionToken.MUTATE) {
+				map.put(classObject, token);
+			} // Otherwise, we have a PermissionLevel.INSPECT token and we are adding a PermissionLevel.INSPECT token so do nothing.
 		}
-		
-		void assertCanCreate(Object object, Class<?> classObject) {
-			if (classObject == Object.class)
-				return;
-			assertCanCreate0(object, classObject);
-			assertCanCreate(object, classObject.getSuperclass());
+
+		private void addPermissionFor(Class<?> classObject, Object object, PermissionLevel level) {
+			addPermissionFor(classObject, object, level == PermissionLevel.MUTATE ? PermissionToken.MUTATE : PermissionToken.DELEGATED_INSPECT);
 		}
-		
-		public void assertCanCreate(Object object) {
-			assertCanCreate(object, object.getClass());
-		}
-		
+
 		void assertPermission(Object object, Class<?> classObject, PermissionLevel level) {
-			PermissionLevel permissionLevel = getPermissionLevelFor(classObject, object);
-			if (permissionLevel.isLessThan(level))
-				// TODO: Track the type of specification frame (method, constructor, assertion, ...) and produce a more specific error message
-				throw new AssertionError(
-						level == PermissionLevel.INSPECT ?
-							"This code does not have permission to inspect this object."
-						:
-							"This code does not have permission to mutate this object.");
+			switch (level) {
+			case INSPECT: assertCanInspect(object, classObject); break;
+			case MUTATE: assertCanMutate(object, classObject); break;
+			default: throw new AssertionError("Internal FSC4J error");
+			}
 		}
 		
 		public void assertCanInspect(Object object, Class<?> classObject) {
-			assertPermission(object, classObject, PermissionLevel.INSPECT);
+			logger.fine(() -> String.format("assertCanInspect(%x, %s) with permissions=%s and claimedPermissions=%s", System.identityHashCode(object), classObject, permissions, claimedPermissions));
+			if (classObject == Object.class)
+				return;
+			WeakHashMap<Class<?>, PermissionToken> permissionMap = getPermissionMapForObject(object);
+			PermissionToken token = permissionMap.get(classObject);
+			if (token != null)
+				return;
+			
+			// Try to claim permission
+			token = PermissionToken.CLAIMED_INSPECT;
+			var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
+			PermissionToken oldClaimedToken = claimedPermissionsMap.putIfAbsent(classObject, token);
+			if (oldClaimedToken == null) {
+				permissionMap.put(classObject, token);
+				return;
+			}
+			if (oldClaimedToken == PermissionToken.IMMUTABLE) {
+				permissionMap.put(classObject, oldClaimedToken);
+				return;
+			}
+			if (oldClaimedToken == PermissionToken.CLAIMED_INSPECT) {
+				// Someone else has claimed an INSPECT permission; try to turn it into an IMMUTABLE permission
+				token = PermissionToken.IMMUTABLE;
+				if (claimedPermissionsMap.replace(classObject, oldClaimedToken, token)) {
+					permissionMap.put(classObject, token);
+					return;
+				}
+				// If the inspect token is gone, that means it was replaced either by a MutateToken or an ImmutableToken.
+				oldClaimedToken = claimedPermissionsMap.get(classObject);
+				if (oldClaimedToken == PermissionToken.IMMUTABLE) {
+					permissionMap.put(classObject, oldClaimedToken);
+					return;
+				}
+			}
+			// If we get here, someone (not us) has claimed a MutableToken on this object frame.
+			throw new AssertionError("This code does not have permission to inspect this object.");
 		}
 		
 		public void assertCanInspect(Object object) {
@@ -196,7 +237,32 @@ public class EffectChecker {
 		}
 		
 		public void assertCanMutate(Object object, Class<?> classObject) {
-			assertPermission(object, classObject, PermissionLevel.MUTATE);
+			logger.fine(() -> String.format("assertCanMutate(%x, %s) with permissions=%s and claimedPermissions=%s", System.identityHashCode(object), classObject, permissions, claimedPermissions));
+			if (classObject == Object.class)
+				return;
+			WeakHashMap<Class<?>, PermissionToken> permissionMap = getPermissionMapForObject(object);
+			PermissionToken token = permissionMap.get(classObject);
+			if (token == PermissionToken.MUTATE)
+				return;
+			if (token == PermissionToken.CLAIMED_INSPECT) {
+				var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
+				if (claimedPermissionsMap.replace(classObject, token, PermissionToken.MUTATE)) {
+					permissionMap.put(classObject, PermissionToken.MUTATE);
+					return;
+				}
+				throw new AssertionError("This code does not have permission to mutate this object; it is immutable.");
+			} else if (token == PermissionToken.IMMUTABLE) {
+				throw new AssertionError("This code does not have permission to mutate this object; it is immutable.");
+			} else {
+				if (token == null) {
+					var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
+					if (claimedPermissionsMap.putIfAbsent(classObject, PermissionToken.MUTATE) == null) {
+						permissionMap.put(classObject, PermissionToken.MUTATE);
+						return;
+					}
+				}
+				throw new AssertionError("This code does not have permission to mutate this object.");
+			}
 		}
 		
 		public void assertCanMutate(Object object) {
@@ -289,33 +355,9 @@ public class EffectChecker {
 			return true;
 		}
 		
-		public boolean inspectsAllPrivate(Object[] objects) {
-			for (Object object : objects)
-				inspectsPrivate(object);
-			return true;
-		}
-		
-		public boolean inspectsAllPrivate(Iterable<Object> objects) {
-			for (Object object : objects)
-				inspectsPrivate(object);
-			return true;
-		}
-		
 		public boolean mutatesPrivate(Object object) {
 			if (object != null)
 				requiresPermission0(object, object.getClass(), PermissionLevel.MUTATE);
-			return true;
-		}
-		
-		public boolean mutatesAllPrivate(Object[] objects) {
-			for (Object object : objects)
-				mutatesPrivate(object);
-			return true;
-		}
-		
-		public boolean mutatesAllPrivate(Iterable<Object> objects) {
-			for (Object object : objects)
-				mutatesPrivate(object);
 			return true;
 		}
 		
@@ -325,33 +367,9 @@ public class EffectChecker {
 			return true;
 		}
 		
-		public boolean inspectsAllInternal(Object[] objects) {
-			for (Object object : objects)
-				inspectsInternal(object);
-			return true;
-		}
-		
-		public boolean inspectsAllInternal(Iterable<Object> objects) {
-			for (Object object : objects)
-				inspectsInternal(object);
-			return true;
-		}
-		
 		public boolean mutatesInternal(Object object) {
 			if (object != null)
 				requiresPermissionInternal(object, object.getClass(), PermissionLevel.MUTATE);
-			return true;
-		}
-		
-		public boolean mutatesAllInternal(Object[] objects) {
-			for (Object object : objects)
-				mutatesInternal(object);
-			return true;
-		}
-		
-		public boolean mutatesAllInternal(Iterable<Object> objects) {
-			for (Object object : objects)
-				mutatesInternal(object);
 			return true;
 		}
 		
@@ -361,33 +379,9 @@ public class EffectChecker {
 			return true;
 		}
 		
-		public boolean inspectsAllPublic(Object[] objects) {
-			for (Object object : objects)
-				inspectsPublic(object);
-			return true;
-		}
-		
-		public boolean inspectsAllPublic(Iterable<Object> objects) {
-			for (Object object : objects)
-				inspectsPublic(object);
-			return true;
-		}
-		
 		public boolean mutatesPublic(Object object) {
 			if (object != null)
 				requiresPermissionPublic(object, object.getClass(), PermissionLevel.MUTATE);
-			return true;
-		}
-		
-		public boolean mutatesAllPublic(Object[] objects) {
-			for (Object object : objects)
-				mutatesPublic(object);
-			return true;
-		}
-		
-		public boolean mutatesAllPublic(Iterable<Object> objects) {
-			for (Object object : objects)
-				mutatesPublic(object);
 			return true;
 		}
 		
@@ -406,9 +400,17 @@ public class EffectChecker {
 	}
 	
 	private static final WeakHashMap<Class<?>, WeakReference<ClassInfo>> classInfoMap = new WeakHashMap<>();
-	private static final WeakConcurrentIdentityHashMap<Object, WeakConcurrentIdentityHashMap<Class<?>, UnitType>> createdObjectsSet = new WeakConcurrentIdentityHashMap<>();
+	private static final WeakConcurrentIdentityHashMap<Object, WeakConcurrentIdentityHashMap<Class<?>, PermissionToken>> claimedPermissions = new WeakConcurrentIdentityHashMap<>();
 	private static final ThreadLocal<SpecificationFrame> specificationStackVariable = new ThreadLocal<>();
 	
+	private static WeakConcurrentIdentityHashMap<Class<?>, PermissionToken> getClaimedPermissionsMapForObject(Object object) {
+		WeakConcurrentIdentityHashMap<Class<?>, PermissionToken> map0 = new WeakConcurrentIdentityHashMap<>();
+		WeakConcurrentIdentityHashMap<Class<?>, PermissionToken> map = claimedPermissions.putIfAbsent(object, map0);
+		if (map == null)
+			return map0;
+		return map;
+	}
+
 	@SuppressWarnings("unchecked")
 	public synchronized static <T> void registerClassInfo(
 			Class<T> classObject,
@@ -435,17 +437,6 @@ public class EffectChecker {
 		return classInfoReference.get();
 	}
 	
-	public static void assertCanCreate(Object object, Class<?> classObject) {
-		SpecificationFrame specificationStack = specificationStackVariable.get();
-		if (specificationStack == null)
-			return;
-		specificationStack.assertCanCreate(object, classObject);
-	}
-	
-	public static void assertCanCreate(Object object) {
-		assertCanCreate(object, object.getClass());
-	}
-
 	public static void assertCanInspect(Object object, Class<?> classObject) {
 		SpecificationFrame specificationStack = specificationStackVariable.get();
 		if (specificationStack == null)

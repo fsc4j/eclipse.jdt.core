@@ -2523,7 +2523,7 @@ class ASTConverter {
 				}
 			}
 			Expression qualifier = null;
-			org.eclipse.jdt.internal.compiler.ast.Expression receiver = expression.receiver;
+			org.eclipse.jdt.internal.compiler.ast.Expression receiver = expression.originalReceiver != null ? expression.originalReceiver : expression.receiver;
 			if (receiver instanceof MessageSend) {
 				if ((receiver.bits & org.eclipse.jdt.internal.compiler.ast.ASTNode.ParenthesizedMASK) != 0) {
 					qualifier = convertToParenthesizedExpression(receiver);

@@ -115,6 +115,7 @@ import org.eclipse.jdt.internal.compiler.util.SimpleLookupTable;
 
 public class MessageSend extends Expression implements IPolyExpression, Invocation {
 
+	public Expression originalReceiver;
 	public Expression receiver;
 	public char[] selector;
 	public Expression[] arguments;

@@ -4671,6 +4671,7 @@ public static final String[] fsc4jRuntimeFilenames = {
 		"fsc4j/EffectChecker.class",
 		"fsc4j/EffectChecker$SpecificationFrame.class",
 		"fsc4j/PermissionLevel.class",
+		"fsc4j/PermissionToken.class",
 		"fsc4j/RelatedObjectIterator.class",
 		"fsc4j/UnitType.class",
 		"fsc4j/WeakConcurrentIdentityHashMap.class",

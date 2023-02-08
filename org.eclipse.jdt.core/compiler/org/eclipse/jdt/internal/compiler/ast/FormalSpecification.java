@@ -10,6 +10,7 @@ import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
 import org.eclipse.jdt.internal.compiler.codegen.Opcodes;
 import org.eclipse.jdt.internal.compiler.flow.ExceptionHandlingFlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
@@ -140,6 +141,8 @@ public class FormalSpecification {
 	public LocalDeclaration postconditionVariableDeclaration;
 	public MessageSend postconditionMethodCall;
 	public ArrayList<Statement> statementsForMethodBody;
+	
+	public boolean checkEffectsClauses;
 
 	public FormalSpecification(AbstractMethodDeclaration method) {
 		this.method = method;
@@ -219,19 +222,6 @@ public class FormalSpecification {
 		}
 	}
 	
-	private void resolveEffectClause(Expression[] expressions) {
-		TypeBinding javaLangObject = this.method.scope.getJavaLangObject();
-		
-		if (expressions != null) {
-			for (Expression e : expressions) {
-				if (e instanceof SpreadExpression)
-					((SpreadExpression)e).body.resolveTypeExpecting(this.method.scope, javaLangObject); // TODO: Should be Iterable<?>
-				else
-					e.resolveTypeExpecting(this.method.scope, javaLangObject);
-			}
-		}
-	}
-	
 	public void initializeMethodBinding() {
 		
 		if ((this.method.modifiers & (ClassFileConstants.AccStatic | ClassFileConstants.AccPrivate | ClassFileConstants.AccFinal)) == 0
@@ -246,12 +236,11 @@ public class FormalSpecification {
 	public void resolve() {
 		if (this.method.ignoreFurtherInvestigation)
 			return;
+		this.checkEffectsClauses = true;
 		
 		if (this.inspectsExpressions != null || this.mutatesExpressions != null || this.mutatesPropertiesExpressions != null) {
 			Block body = new Block(this.method.explicitDeclarations);
 			body.statements = this.method.statements;
-			if (this.method.statements == null && this.method.explicitDeclarations != 0)
-				throw new AssertionError("FSC4J internal error"); //$NON-NLS-1$
 			
 			MessageSend pushNewFrameCall = new MessageSend();
 			pushNewFrameCall.receiver = getQualifiedNameReference("fsc4j.EffectChecker", this.method.bodyStart); //$NON-NLS-1$
@@ -261,12 +250,257 @@ public class FormalSpecification {
 			specFrameVariableDeclaration.type = fsc4jEffectCheckerSpecificationFrame();
 			specFrameVariableDeclaration.initialization = pushNewFrameCall;
 			
+			ArrayList<Statement> statementsForTryBlock = new ArrayList<>();
+			if (this.inspectsExpressions != null) {
+				for (Expression e : this.inspectsExpressions) {
+					if (e instanceof ThisReference && this.method instanceof ConstructorDeclaration)
+						continue; // Skip "@inspects | this" on constructor.
+					long pos = ((long)e.sourceStart << 32) | e.sourceEnd;
+					if (e instanceof SpreadExpression) {
+						char[] elementName = "spread$element".toCharArray();
+						LocalDeclaration elementVariable = new LocalDeclaration(elementName, e.sourceStart, e.sourceEnd);
+						elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+						elementVariable.bits |= ASTNode.IsForeachElementVariable;
+						ForeachStatement s = new ForeachStatement(elementVariable, e.sourceStart);
+						s.collection = ((SpreadExpression)e).body;
+						
+						MessageSend call = new MessageSend();
+						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+						// TODO: If this method is private and e.body denotes a collection of objects of this class, use inspectsPrivate?
+						// TODO: If this method is internal and e.body denotes a collection of objects of a class of this package, use inspectsInternal?
+						call.selector = "inspectsPublic".toCharArray();
+						call.arguments = new Expression[] {new SingleNameReference(elementName, pos)};
+						call.sourceStart = e.sourceStart;
+						call.sourceEnd = e.sourceEnd;
+						call.nameSourcePosition = pos;
+
+						s.action = new AssertStatement(call, e.sourceStart);
+						statementsForTryBlock.add(s);
+					} else {
+						MessageSend call = new MessageSend();
+						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+						// TODO: If this method is private and e denotes an object of this class, use inspectsPrivate?
+						// TODO: If this method is internal and e denotes an object of a class of this package, use inspectsInternal?
+						call.selector = (
+								!(e instanceof ThisReference) || (this.method.modifiers & (ClassFileConstants.AccPublic | ClassFileConstants.AccProtected)) != 0 ? "inspectsPublic" :
+								(this.method.modifiers & ClassFileConstants.AccPrivate) != 0 ? "inspectsPrivate" :
+								"inspectsInternal"
+							).toCharArray();
+						call.arguments = new Expression[] {e};
+						call.sourceStart = e.sourceStart;
+						call.sourceEnd = e.sourceEnd;
+						call.nameSourcePosition = pos;
+
+						statementsForTryBlock.add(new AssertStatement(call, e.sourceStart));
+					}
+				}
+			}
+			if (this.mutatesExpressions != null) {
+				for (Expression e : this.mutatesExpressions) {
+					if (e instanceof ThisReference && this.method instanceof ConstructorDeclaration)
+						continue; // Skip "@mutates | this" on constructor.
+					long pos = ((long)e.sourceStart << 32) | e.sourceEnd;
+					if (e instanceof SpreadExpression) {
+						char[] elementName = "spread$element".toCharArray();
+						LocalDeclaration elementVariable = new LocalDeclaration(elementName, e.sourceStart, e.sourceEnd);
+						elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+						elementVariable.bits |= ASTNode.IsForeachElementVariable;
+						ForeachStatement s = new ForeachStatement(elementVariable, e.sourceStart);
+						s.collection = ((SpreadExpression)e).body;
+						
+						MessageSend call = new MessageSend();
+						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+						// TODO: If this method is private and e.body denotes a collection of objects of this class, use mutatesPrivate?
+						// TODO: If this method is internal and e.body denotes a collection of objects of a class of this package, use mutatesInternal?
+						call.selector = "mutatesPublic".toCharArray();
+						call.arguments = new Expression[] {new SingleNameReference(elementName, pos)};
+						call.sourceStart = e.sourceStart;
+						call.sourceEnd = e.sourceEnd;
+						call.nameSourcePosition = pos;
+
+						s.action = new AssertStatement(call, e.sourceStart);
+						statementsForTryBlock.add(s);
+					} else {
+						MessageSend call = new MessageSend();
+						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+						// TODO: If this method is private and e denotes an object of this class, use mutatesPrivate?
+						// TODO: If this method is internal and e denotes an object of a class of this package, use mutatesInternal?
+						call.selector = (
+								!(e instanceof ThisReference) || (this.method.modifiers & (ClassFileConstants.AccPublic | ClassFileConstants.AccProtected)) != 0 ? "mutatesPublic" :
+								(this.method.modifiers & ClassFileConstants.AccPrivate) != 0 ? "mutatesPrivate" :
+								"mutatesInternal"
+							).toCharArray();
+						call.arguments = new Expression[] {e};
+						call.sourceStart = e.sourceStart;
+						call.sourceEnd = e.sourceEnd;
+						call.nameSourcePosition = pos;
+
+						statementsForTryBlock.add(new AssertStatement(call, e.sourceStart));
+					}
+				}
+			}
+			if (this.mutatesPropertiesExpressions != null) {
+				for (Expression e : this.mutatesPropertiesExpressions) {
+					if (!(e instanceof MessageSend))
+						this.method.scope.problemReporter().mutatesPropertiesExpressionShouldBeMethodCall(e);
+					else {
+						long pos = ((long)e.sourceStart << 32) + e.sourceEnd;
+						MessageSend messageSend = (MessageSend)e;
+						messageSend.originalReceiver = messageSend.receiver;
+						if (messageSend.arguments != null && messageSend.arguments.length != 0)
+							this.method.scope.problemReporter().mutatesPropertiesMethodCallShouldNotSpecifyArguments(e);
+						else if (messageSend.receiver instanceof SpreadExpression) {
+							SpreadExpression receiver = (SpreadExpression)messageSend.receiver;
+							
+							char[] elementName = "spread$element".toCharArray();
+							LocalDeclaration elementVariable = new LocalDeclaration(elementName, e.sourceStart, e.sourceEnd);
+							elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
+							elementVariable.bits |= ASTNode.IsForeachElementVariable;
+							ForeachStatement s = new ForeachStatement(elementVariable, e.sourceStart);
+							s.collection = receiver.body;
+							
+							MessageSend call = new MessageSend();
+							call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+							// TODO: If this method is private and e.body denotes a collection of objects of this class, use mutatesPrivate?
+							// TODO: If this method is internal and e.body denotes a collection of objects of a class of this package, use mutatesInternal?
+							call.selector = "mutatesPublic".toCharArray();
+							call.arguments = new Expression[] {new SingleNameReference(elementName, pos)};
+							call.sourceStart = e.sourceStart;
+							call.sourceEnd = e.sourceEnd;
+							call.nameSourcePosition = pos;
+							
+							messageSend.receiver = new SingleNameReference(elementName, pos);
+							Expression mutatesCallWrapper = new Expression() {
+								
+								@Override
+								public TypeBinding resolveType(BlockScope scope) {
+									messageSend.resolveType(scope);
+									TypeBinding result = call.resolveType(scope);
+									this.constant = call.constant;
+									return result;
+								}
+
+								@Override
+								public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, FlowInfo flowInfo) {
+									return this.analyseCode(currentScope, flowContext, flowInfo, true);
+								}
+
+								@Override
+								public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, FlowInfo flowInfo,
+										boolean valueRequired) {
+									flowInfo = messageSend.analyseCode(currentScope, flowContext, flowInfo, true);
+									return call.analyseCode(currentScope, flowContext, flowInfo, valueRequired);
+								}
+								
+								@Override
+								public void generateCode(BlockScope currentScope, CodeStream codeStream,
+										boolean valueRequired) {
+									call.generateCode(currentScope, codeStream, true);
+								}
+
+								@Override
+								public StringBuffer printExpression(int indent, StringBuffer output) {
+									output.append("(@mutates_properties| ");
+									e.printExpression(indent, output);
+									output.append(")");
+									return output;
+								}
+								
+								@Override
+								public void traverse(ASTVisitor visitor, BlockScope scope) {
+									messageSend.traverse(visitor, scope);
+									call.traverse(visitor, scope);
+								}
+								
+							};
+							
+							s.action = new AssertStatement(mutatesCallWrapper, e.sourceStart);
+							statementsForTryBlock.add(s);
+						} else {
+							MessageSend mutatesCall = new MessageSend();
+							mutatesCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
+							mutatesCall.sourceStart = e.sourceStart;
+							mutatesCall.sourceEnd = e.sourceEnd;
+							mutatesCall.nameSourcePosition = pos;
+							
+							Expression mutatesCallWrapper = new Expression() {
+								
+								@Override
+								public TypeBinding resolveType(BlockScope scope) {
+									e.resolveType(scope);
+									
+									mutatesCall.selector = (
+											!(messageSend.receiver instanceof ThisReference) || (FormalSpecification.this.method.modifiers & (ClassFileConstants.AccPublic | ClassFileConstants.AccProtected)) != 0 ? "mutatesPublic" :
+											(FormalSpecification.this.method.modifiers & ClassFileConstants.AccPrivate) != 0 ? "mutatesPrivate" :
+											"mutatesInternal"
+										).toCharArray();
+									mutatesCall.arguments = new Expression[] {
+										new NullLiteral(e.sourceStart, e.sourceEnd)
+									};
+									
+									TypeBinding result = mutatesCall.resolveType(scope);
+									this.constant = mutatesCall.constant;
+									return result;
+								}
+
+								@Override
+								public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, FlowInfo flowInfo) {
+									return this.analyseCode(currentScope, flowContext, flowInfo, true);
+								}
+
+								@Override
+								public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, FlowInfo flowInfo,
+										boolean valueRequired) {
+									flowInfo = e.analyseCode(currentScope, flowContext, flowInfo, true);
+									return mutatesCall.analyseCode(currentScope, flowContext, flowInfo, valueRequired);
+								}
+								
+								@Override
+								public void generateCode(BlockScope currentScope, CodeStream codeStream,
+										boolean valueRequired) {
+									if (messageSend.receiver instanceof ThisReference && FormalSpecification.this.method instanceof ConstructorDeclaration) {
+										codeStream.iconst_1(); // true
+										return;
+									}
+									mutatesCall.receiver.generateCode(currentScope, codeStream, true);
+									messageSend.receiver.generateCode(currentScope, codeStream, true);
+									
+									MethodBinding method = mutatesCall.binding.original();
+									TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, method, method.declaringClass, false);
+									codeStream.invoke(Opcodes.OPC_invokevirtual, method, constantPoolDeclaringClass);
+								}
+
+								@Override
+								public StringBuffer printExpression(int indent, StringBuffer output) {
+									output.append("(@mutates_properties| ");
+									e.printExpression(indent, output);
+									output.append(")");
+									return output;
+								}
+								
+								@Override
+								public void traverse(ASTVisitor visitor, BlockScope scope) {
+									messageSend.traverse(visitor, scope);
+									mutatesCall.traverse(visitor, scope);
+								}
+								
+							};
+							statementsForTryBlock.add(new AssertStatement(mutatesCallWrapper, e.sourceStart));
+						}
+					}
+				}
+			}
+			statementsForTryBlock.add(body);
+			
+			Block tryBlock = new Block(0);
+			tryBlock.statements = statementsForTryBlock.toArray(new Statement[statementsForTryBlock.size()]);
+			
 			MessageSend popCall = new MessageSend();
 			popCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart);
 			popCall.selector = "pop".toCharArray();
 			
 			TryStatement tryStatement = new TryStatement();
-			tryStatement.tryBlock = body;
+			tryStatement.tryBlock = tryBlock;
 			tryStatement.finallyBlock = new Block(0);
 			tryStatement.finallyBlock.statements = new Statement[] {popCall};
 			
@@ -285,37 +519,7 @@ public class FormalSpecification {
 			for (Expression e : this.mayThrowConditions)
 				e.resolveTypeExpecting(this.method.scope, TypeBinding.BOOLEAN);
 		
-		resolveEffectClause(this.inspectsExpressions);
-		resolveEffectClause(this.mutatesExpressions);
 		//resolveEffectClause(this.createsExpressions); // @creates expressions can refer to 'result'
-		
-		if (this.mutatesPropertiesExpressions != null) {
-			for (Expression e : this.mutatesPropertiesExpressions) {
-				if (!(e instanceof MessageSend))
-					this.method.scope.problemReporter().mutatesPropertiesExpressionShouldBeMethodCall(e);
-				else {
-					MessageSend messageSend = (MessageSend)e;
-					if (messageSend.arguments != null && messageSend.arguments.length != 0)
-						this.method.scope.problemReporter().mutatesPropertiesMethodCallShouldNotSpecifyArguments(e);
-					else if (messageSend.receiver instanceof SpreadExpression) {
-						SpreadExpression receiver = (SpreadExpression)messageSend.receiver;
-						char[] elementName = "spread$element".toCharArray();
-						LocalDeclaration elementVariable = new LocalDeclaration(elementName, e.sourceStart, e.sourceEnd);
-						long pos = ((long)e.sourceStart << 32) + e.sourceEnd;
-						elementVariable.type = new SingleTypeReference("var".toCharArray(), pos);
-						elementVariable.bits |= ASTNode.IsForeachElementVariable;
-						ForeachStatement s = new ForeachStatement(elementVariable, e.sourceStart);
-						s.collection = receiver.body;
-						messageSend.receiver = new SingleNameReference(elementName, pos);
-						s.action = messageSend;
-						s.resolve(this.method.scope);
-						messageSend.receiver = receiver;
-					} else {
-						e.resolveType(this.method.scope);
-					}
-				}
-			}
-		}
 		
 		{
 			int overloadCount = this.method.scope.enclosingClassScope().registerOverload(this.method.selector);
@@ -574,6 +778,14 @@ public class FormalSpecification {
 		if (this.postconditions != null)
 			for (Expression e : this.postconditions)
 				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+	}
+	
+	public void checkEffectsClauses() {
+		if (!this.checkEffectsClauses)
+			return;
+		
+		int thisElementModifiers = this.method.binding.modifiers;
+		ReferenceBinding thisClassBinding = this.method.binding.declaringClass;
 		
 		if (this.inspectsExpressions != null)
 			for (Expression e : this.inspectsExpressions)
@@ -731,6 +943,8 @@ public class FormalSpecification {
 			@Override
 			public boolean visit(MessageSend messageSend, BlockScope scope) {
 				checkMethodReference(messageSend.nameSourcePosition, messageSend.binding);
+				if (messageSend.originalReceiver != null)
+					messageSend.originalReceiver.traverse(this, scope);
 				return super.visit(messageSend, scope);
 			}
 
