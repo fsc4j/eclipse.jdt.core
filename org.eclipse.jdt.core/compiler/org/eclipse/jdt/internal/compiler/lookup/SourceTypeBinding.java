@@ -3332,7 +3332,8 @@ public FieldBinding[] syntheticFields() {
 	if (this.synthetics == null) return null;
 	int fieldSize = this.synthetics[SourceTypeBinding.FIELD_EMUL] == null ? 0 : this.synthetics[SourceTypeBinding.FIELD_EMUL].size();
 	int literalSize = this.synthetics[SourceTypeBinding.CLASS_LITERAL_EMUL] == null ? 0 :this.synthetics[SourceTypeBinding.CLASS_LITERAL_EMUL].size();
-	int totalSize = fieldSize + literalSize + (this.scope.referenceContext.invariantsCheckingStateField != null ? 1 : 0);
+	int totalSize0 = fieldSize + literalSize + (this.scope.referenceContext.invariantsCheckingStateField != null ? 1 : 0);
+	int totalSize = totalSize0 + (this.scope.referenceContext.classInfoField != null ? 1 : 0);
 	if (totalSize == 0) return null;
 	FieldBinding[] bindings = new FieldBinding[totalSize];
 
@@ -3353,7 +3354,9 @@ public FieldBinding[] syntheticFields() {
 		}
 	}
 	if (this.scope.referenceContext.invariantsCheckingStateField != null)
-		bindings[bindings.length - 1] = this.scope.referenceContext.invariantsCheckingStateField;
+		bindings[fieldSize + literalSize] = this.scope.referenceContext.invariantsCheckingStateField;
+	if (this.scope.referenceContext.classInfoField != null)
+		bindings[totalSize0] = this.scope.referenceContext.classInfoField;
 	
 	return bindings;
 }

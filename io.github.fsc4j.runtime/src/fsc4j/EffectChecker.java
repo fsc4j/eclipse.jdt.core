@@ -412,7 +412,7 @@ public class EffectChecker {
 	}
 
 	@SuppressWarnings("unchecked")
-	public synchronized static <T> void registerClassInfo(
+	public synchronized static <T> Object registerClassInfo(
 			Class<T> classObject,
 			RelatedObjectIterator<T> classLevelRepresentationObjectIterator,
 			RelatedObjectIterator<T> classLevelPeerObjectIterator,
@@ -428,6 +428,7 @@ public class EffectChecker {
 				(RelatedObjectIterator<Object>)packageLevelPeerObjectIterator
 		);
 		classInfoMap.put(classObject, new WeakReference<>(classInfo));
+		return classInfo;
 	}
 	
 	private synchronized static ClassInfo getClassInfo(Class<?> classObject) {

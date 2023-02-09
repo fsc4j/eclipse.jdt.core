@@ -85,6 +85,7 @@ public class TypeDeclaration extends Statement implements ProblemSeverities, Ref
 	public int classRepresentationInvariantsCount;
 	public MethodDeclaration packageInvariantsMethod;
 	public int packageRepresentationInvariantsCount;
+	public SyntheticFieldBinding classInfoField;
 	public MessageSend registerClassInfoCall;
 
 	public QualifiedAllocationExpression allocation; // for anonymous only
@@ -1942,6 +1943,14 @@ public void resolve() {
 					packageLevelPeerObjectIterator.sourceEnd = this.bodyEnd;
 				}
 				
+				this.classInfoField = new SyntheticFieldBinding(
+						"$classInfo".toCharArray(), //$NON-NLS-1$
+						TypeBinding.wellKnownType(this.staticInitializerScope, TypeIds.T_JavaLangObject),
+						ClassFileConstants.AccPrivate|ClassFileConstants.AccSynthetic|ClassFileConstants.AccStatic,
+						this.binding,
+						Constant.NotAConstant,
+						Integer.MIN_VALUE);
+				
 				this.registerClassInfoCall = new MessageSend();
 				this.registerClassInfoCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
 				this.registerClassInfoCall.selector = "registerClassInfo".toCharArray();
@@ -1953,7 +1962,7 @@ public void resolve() {
 						packageLevelPeerObjectIterator == null ? new NullLiteral(this.bodyStart, this.bodyStart) : packageLevelPeerObjectIterator
 				};
 				
-				this.registerClassInfoCall.resolve(this.staticInitializerScope);
+				this.registerClassInfoCall.resolveTypeExpecting(this.staticInitializerScope, TypeBinding.wellKnownType(this.staticInitializerScope, TypeIds.T_JavaLangObject));
 			}
 					
 		}
