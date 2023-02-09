@@ -6,7 +6,6 @@ class Account {
 	 * @mutates |
 	 */
 	Account() {
-		fsc4j.EffectChecker.assertCanMutate(this);
 		balance = 0;
 	}
 	
@@ -44,7 +43,14 @@ class Account {
 	void depositBad(int amount) {
 		deposit(amount);
 	}
-	
+
+	/**
+	 * @mutates |
+	 */
+	void depositBad2(int amount) {
+		balance += amount;
+	}
+
 	/**
 	 * @pre | 0 <= getBalance()
 	 * @mutates_properties | this.getBalance()
@@ -359,6 +365,12 @@ class Main {
 		System.err.println("This should fail as well:");
 		try {
 			account.depositBad(10);
+			System.err.println("Should not happen!");
+		} catch (AssertionError e) {
+			e.printStackTrace();
+		}
+		try {
+			account.depositBad2(10);
 			System.err.println("Should not happen!");
 		} catch (AssertionError e) {
 			e.printStackTrace();

@@ -6,6 +6,7 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
@@ -237,7 +238,10 @@ public class EffectChecker {
 		}
 		
 		public void assertCanMutate(Object object, Class<?> classObject) {
-			logger.fine(() -> String.format("assertCanMutate(%x, %s) with permissions=%s and claimedPermissions=%s", System.identityHashCode(object), classObject, permissions, claimedPermissions));
+			logger.fine(() -> {
+				System.gc();
+				return String.format("%s.assertCanMutate(%x, %s) with permissions=%s and claimedPermissions=%s", this, System.identityHashCode(object), classObject, permissions, claimedPermissions);
+			});
 			if (classObject == Object.class)
 				return;
 			WeakHashMap<Class<?>, PermissionToken> permissionMap = getPermissionMapForObject(object);
@@ -275,15 +279,22 @@ public class EffectChecker {
 			addPermissionFor(classObject, object, level);
 		}
 		
+		private class RepresentationObjectConsumer implements Consumer<Object> {
+			PermissionLevel level;
+			RepresentationObjectConsumer(PermissionLevel level) { this.level = level; }
+			@Override
+			public void accept(Object representationObject) {
+				if (representationObject != null)
+					requiresPermissionPublic(representationObject, representationObject.getClass(), level);
+			}
+		}
+		
 		private void requiresPermission1Internal(Object object, Class<?> classObject, PermissionLevel level) {
 			if (classObject != Object.class) {
 				requiresPermission0(object, classObject, level);
 				ClassInfo classInfo = getClassInfo(classObject);
 				if (classInfo != null && classInfo.classLevelRepresentationObjectIterator != null) {
-					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-						if (repObject != null)
-							requiresPermissionPublic(repObject, repObject.getClass(), level);
-					});
+					classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, new RepresentationObjectConsumer(level));
 				}
 			}
 		}
@@ -295,18 +306,26 @@ public class EffectChecker {
 				ClassInfo classInfo = getClassInfo(classObject);
 				if (classInfo != null) {
 					if (classInfo.classLevelRepresentationObjectIterator != null) {
-						classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-							if (repObject != null)
-								requiresPermissionPublic(repObject, repObject.getClass(), level);
-						});
+						classInfo.classLevelRepresentationObjectIterator.forEachRelatedObject(object, new RepresentationObjectConsumer(level));
 					}
 					if (classInfo.packageLevelRepresentationObjectIterator != null) {
-						classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, repObject -> {
-							if (repObject != null)
-								requiresPermissionPublic(repObject, repObject.getClass(), level);
-						});
+						classInfo.packageLevelRepresentationObjectIterator.forEachRelatedObject(object, new RepresentationObjectConsumer(level));
 					}
 				}
+			}
+		}
+		
+		private class InternalPeerObjectConsumer implements Consumer<Object> {
+			PermissionLevel level;
+			IdentityHashMap<Object, UnitType> peerObjectsVisited;
+			InternalPeerObjectConsumer(PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
+				this.level = level;
+				this.peerObjectsVisited = peerObjectsVisited;
+			}
+			@Override
+			public void accept(Object peerObject) {
+				if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
+					requiresPeerGroupPermissionInternal(peerObject, peerObject.getClass(), level, peerObjectsVisited);
 			}
 		}
 		
@@ -315,29 +334,37 @@ public class EffectChecker {
 			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
 			ClassInfo classInfo = getClassInfo(classObject);
 			if (classInfo != null && classInfo.classLevelPeerObjectIterator != null)
-				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-					if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
-						requiresPeerGroupPermissionInternal(peerObject, peerObject.getClass(), level, peerObjectsVisited);
-				});
+				classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, new InternalPeerObjectConsumer(level, peerObjectsVisited));
+		}
+		
+		private class PublicPeerObjectConsumer implements Consumer<Object> {
+			PermissionLevel level;
+			IdentityHashMap<Object, UnitType> peerObjectsVisited;
+			PublicPeerObjectConsumer(PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
+				this.level = level;
+				this.peerObjectsVisited = peerObjectsVisited;
+			}
+			@Override
+			public void accept(Object peerObject) {
+				if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
+					requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
+			}
 		}
 		
 		private void requiresPeerGroupPermissionPublic(Object object, Class<?> classObject, PermissionLevel level, IdentityHashMap<Object, UnitType> peerObjectsVisited) {
 			requiresPermission1Public(object, classObject, level);
 			peerObjectsVisited.put(object, UnitType.UNIT_VALUE);
-			ClassInfo classInfo = getClassInfo(classObject);
-			if (classInfo != null) {
-				if (classInfo.classLevelPeerObjectIterator != null) {
-					classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-						if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
-							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
-					});
+			while (classObject != Object.class) {
+				ClassInfo classInfo = getClassInfo(classObject);
+				if (classInfo != null) {
+					if (classInfo.classLevelPeerObjectIterator != null) {
+						classInfo.classLevelPeerObjectIterator.forEachRelatedObject(object, new PublicPeerObjectConsumer(level, peerObjectsVisited));
+					}
+					if (classInfo.packageLevelPeerObjectIterator != null) {
+						classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, new PublicPeerObjectConsumer(level, peerObjectsVisited));
+					}
 				}
-				if (classInfo.packageLevelPeerObjectIterator != null) {
-					classInfo.packageLevelPeerObjectIterator.forEachRelatedObject(object, peerObject -> {
-						if (peerObject != null && !peerObjectsVisited.containsKey(peerObject))
-							requiresPeerGroupPermissionPublic(peerObject, peerObject.getClass(), level, peerObjectsVisited);
-					});
-				}
+				classObject = classObject.getSuperclass();
 			}
 		}
 		

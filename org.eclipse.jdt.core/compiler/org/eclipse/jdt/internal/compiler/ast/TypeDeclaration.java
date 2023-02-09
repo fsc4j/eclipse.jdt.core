@@ -87,6 +87,7 @@ public class TypeDeclaration extends Statement implements ProblemSeverities, Ref
 	public int packageRepresentationInvariantsCount;
 	public SyntheticFieldBinding classInfoField;
 	public MessageSend registerClassInfoCall;
+	public MessageSend assertCanMutateCall;
 
 	public QualifiedAllocationExpression allocation; // for anonymous only
 	public TypeDeclaration enclosingType; // for member types only
@@ -2031,6 +2032,15 @@ public void resolve() {
 				this.methods[i].resolve(this.scope);
 			}
 		}
+		this.assertCanMutateCall = new MessageSend();
+		this.assertCanMutateCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
+		this.assertCanMutateCall.selector = "assertCanMutate".toCharArray();
+		this.assertCanMutateCall.arguments = new Expression[] {
+				new NullLiteral(0, 0),
+				new NullLiteral(0, 0)
+		};
+		this.assertCanMutateCall.resolve(this.staticInitializerScope);
+
 		// Resolve javadoc
 		if (this.javadoc != null) {
 			if (this.scope != null && (this.name != TypeConstants.PACKAGE_INFO_NAME)) {

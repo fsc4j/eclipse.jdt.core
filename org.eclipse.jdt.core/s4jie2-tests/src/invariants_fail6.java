@@ -17,7 +17,7 @@ public class invariants_fail6 {
 	/** @inspects | this */
 	void fooInternal() {}
 	
-	/** @inspects | this */
+	/** @mutates | this */
 	public void foo() {
 		x += 20;
 		getDifferenceInternal();

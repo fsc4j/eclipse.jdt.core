@@ -34,6 +34,7 @@ import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
 import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
 import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
 import org.eclipse.jdt.internal.compiler.lookup.Scope;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
 import org.eclipse.jdt.internal.compiler.lookup.TagBits;
 import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
@@ -121,6 +122,35 @@ public void fieldStore(Scope currentScope, CodeStream codeStream, FieldBinding f
 		}
 		if (syntheticWriteAccessor == null) {
 			TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, fieldBinding, receiverType, isImplicitThisReceiver);
+			if (currentScope != null) {
+				SourceTypeBinding enclosingSourceType = currentScope.enclosingSourceType();
+				if (enclosingSourceType != null && enclosingSourceType.scope != null && enclosingSourceType.scope.referenceContext != null) {
+					MessageSend assertCanMutateCall = enclosingSourceType.scope.referenceContext.assertCanMutateCall;
+					if (assertCanMutateCall != null) {
+						MethodBinding assertCanMutateMethodBinding = assertCanMutateCall.binding;
+						if (assertCanMutateMethodBinding != null) {
+							// Stack: [targetObject][rhs]
+							switch (fieldBinding.type.id) {
+								case TypeIds.T_long :
+								case TypeIds.T_double :
+									codeStream.dup2_x1();
+									codeStream.pop2();
+									codeStream.dup_x2();
+									break;
+								default :
+									codeStream.dup_x1();
+									codeStream.pop();
+									codeStream.dup_x1();
+									break;
+							}
+							// Stack: [targetObject][rhs][targetObject]
+						    codeStream.ldc(constantPoolDeclaringClass);
+						    // Stack: [targetObject][rhs][targetObject][declaringClass]
+						    codeStream.invoke(Opcodes.OPC_invokestatic, assertCanMutateMethodBinding, null);
+						}
+					}
+				}
+			}
 			codeStream.fieldAccess(Opcodes.OPC_putfield, fieldBinding, constantPoolDeclaringClass);
 		} else {
 			codeStream.invoke(Opcodes.OPC_invokestatic, syntheticWriteAccessor, null /* default declaringClass */);
