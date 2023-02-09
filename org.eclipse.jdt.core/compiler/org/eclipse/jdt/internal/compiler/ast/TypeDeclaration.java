@@ -1869,9 +1869,12 @@ public void resolve() {
 				LambdaExpression classLevelRepresentationObjectIterator = null;
 				if (statementsForClassLevelRepresentationObjectIterator != null) {
 					Block body = new Block(0);
+					body.sourceStart = this.bodyStart;
+					body.sourceEnd = this.bodyEnd;
 					body.statements = statementsForClassLevelRepresentationObjectIterator.toArray(new Statement[statementsForClassLevelRepresentationObjectIterator.size()]);
 					
 					classLevelRepresentationObjectIterator = new LambdaExpression(this.compilationResult, false);
+					classLevelRepresentationObjectIterator.lambdaMethodSelector = "$classLevelRepresentationObjectIterator".toCharArray();
 					classLevelRepresentationObjectIterator.isSynthetic = true;
 					classLevelRepresentationObjectIterator.setArguments(new Argument[] {
 						new Argument(subjectParameterName, pos, null, 0, true),
@@ -1885,9 +1888,12 @@ public void resolve() {
 				LambdaExpression classLevelPeerObjectIterator = null;
 				if (statementsForClassLevelPeerObjectIterator != null) {
 					Block body = new Block(0);
+					body.sourceStart = this.bodyStart;
+					body.sourceEnd = this.bodyEnd;
 					body.statements = statementsForClassLevelPeerObjectIterator.toArray(new Statement[statementsForClassLevelPeerObjectIterator.size()]);
 					
 					classLevelPeerObjectIterator = new LambdaExpression(this.compilationResult, false);
+					classLevelPeerObjectIterator.lambdaMethodSelector = "$classLevelPeerObjectIterator".toCharArray();
 					classLevelPeerObjectIterator.isSynthetic = true;
 					classLevelPeerObjectIterator.setArguments(new Argument[] {
 						new Argument(subjectParameterName, pos, null, 0, true),
@@ -1901,9 +1907,12 @@ public void resolve() {
 				LambdaExpression packageLevelRepresentationObjectIterator = null;
 				if (statementsForPackageLevelRepresentationObjectIterator != null) {
 					Block body = new Block(0);
+					body.sourceStart = this.bodyStart;
+					body.sourceEnd = this.bodyEnd;
 					body.statements = statementsForPackageLevelRepresentationObjectIterator.toArray(new Statement[statementsForPackageLevelRepresentationObjectIterator.size()]);
 					
 					packageLevelRepresentationObjectIterator = new LambdaExpression(this.compilationResult, false);
+					packageLevelRepresentationObjectIterator.lambdaMethodSelector = "$packageLevelRepresentationObjectIterator".toCharArray();
 					packageLevelRepresentationObjectIterator.isSynthetic = true;
 					packageLevelRepresentationObjectIterator.setArguments(new Argument[] {
 						new Argument(subjectParameterName, pos, null, 0, true),
@@ -1917,9 +1926,12 @@ public void resolve() {
 				LambdaExpression packageLevelPeerObjectIterator = null;
 				if (statementsForPackageLevelPeerObjectIterator != null) {
 					Block body = new Block(0);
+					body.sourceStart = this.bodyStart;
+					body.sourceEnd = this.bodyEnd;
 					body.statements = statementsForPackageLevelPeerObjectIterator.toArray(new Statement[statementsForPackageLevelPeerObjectIterator.size()]);
 					
 					packageLevelPeerObjectIterator = new LambdaExpression(this.compilationResult, false);
+					packageLevelPeerObjectIterator.lambdaMethodSelector = "$packageLevelPeerObjectIterator".toCharArray();
 					packageLevelPeerObjectIterator.isSynthetic = true;
 					packageLevelPeerObjectIterator.setArguments(new Argument[] {
 						new Argument(subjectParameterName, pos, null, 0, true),

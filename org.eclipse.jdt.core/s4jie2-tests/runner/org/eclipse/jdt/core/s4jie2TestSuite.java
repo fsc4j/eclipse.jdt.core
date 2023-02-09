@@ -240,6 +240,24 @@ public class s4jie2TestSuite {
 
 		testCompile("Minimal", true, "", "");
 
+		testCompileAndRun(true, "class_level_rep", false, "",
+				"Exception in thread \"main\" java.lang.AssertionError: This code does not have permission to mutate this object.\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.assertCanMutate(EffectChecker.java:265)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.assertPermission(EffectChecker.java:191)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPermission0(EffectChecker.java:275)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPermission1Public(EffectChecker.java:294)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPeerGroupPermissionPublic(EffectChecker.java:326)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPermissionPublic(EffectChecker.java:350)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.lambda$2(EffectChecker.java:286)\n"
+				+ "	at AccountWrapper.$classLevelRepresentationObjectIterator(class_level_rep.java:23)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPermission1Internal(EffectChecker.java:284)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPeerGroupPermissionInternal(EffectChecker.java:315)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.requiresPermissionInternal(EffectChecker.java:346)\n"
+				+ "	at fsc4j.EffectChecker$SpecificationFrame.mutatesInternal(EffectChecker.java:373)\n"
+				+ "	at AccountWrapper.deposit(class_level_rep.java:35)\n"
+				+ "	at AccountWrapper.badDeposit0(class_level_rep.java:46)\n"
+				+ "	at AccountWrapper.badDeposit(class_level_rep.java:55)\n"
+				+ "	at Main.main(class_level_rep.java:63)\n");
 		testCompileAndRun(false, "GameCharacter_pre", true, "",
 				"No exception was thrown! :-(\n" +
 				"No exception was thrown! :-(\n");
