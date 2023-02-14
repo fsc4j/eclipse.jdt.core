@@ -242,15 +242,17 @@ public class FormalSpecification {
 			Block body = new Block(this.method.explicitDeclarations);
 			body.statements = this.method.statements;
 			
-			MessageSend pushNewFrameCall = new MessageSend();
-			pushNewFrameCall.receiver = getQualifiedNameReference("fsc4j.EffectChecker", this.method.bodyStart); //$NON-NLS-1$
-			pushNewFrameCall.selector = "pushNewFrame".toCharArray(); //$NON-NLS-1$
+			ArrayList<Statement> statementsForOuterBlock = new ArrayList<>();
+			
+			MessageSend createNewFrameCall = new MessageSend();
+			createNewFrameCall.receiver = getQualifiedNameReference("fsc4j.EffectChecker", this.method.bodyStart); //$NON-NLS-1$
+			createNewFrameCall.selector = "createNewFrame".toCharArray(); //$NON-NLS-1$
 			
 			LocalDeclaration specFrameVariableDeclaration = new LocalDeclaration(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart, this.method.bodyStart);
 			specFrameVariableDeclaration.type = fsc4jEffectCheckerSpecificationFrame();
-			specFrameVariableDeclaration.initialization = pushNewFrameCall;
+			specFrameVariableDeclaration.initialization = createNewFrameCall;
+			statementsForOuterBlock.add(specFrameVariableDeclaration);
 			
-			ArrayList<Statement> statementsForTryBlock = new ArrayList<>();
 			if (this.inspectsExpressions != null) {
 				for (Expression e : this.inspectsExpressions) {
 					if (e instanceof ThisReference && this.method instanceof ConstructorDeclaration)
@@ -275,7 +277,7 @@ public class FormalSpecification {
 						call.nameSourcePosition = pos;
 
 						s.action = new AssertStatement(call, e.sourceStart);
-						statementsForTryBlock.add(s);
+						statementsForOuterBlock.add(s);
 					} else {
 						MessageSend call = new MessageSend();
 						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
@@ -291,7 +293,7 @@ public class FormalSpecification {
 						call.sourceEnd = e.sourceEnd;
 						call.nameSourcePosition = pos;
 
-						statementsForTryBlock.add(new AssertStatement(call, e.sourceStart));
+						statementsForOuterBlock.add(new AssertStatement(call, e.sourceStart));
 					}
 				}
 			}
@@ -319,7 +321,7 @@ public class FormalSpecification {
 						call.nameSourcePosition = pos;
 
 						s.action = new AssertStatement(call, e.sourceStart);
-						statementsForTryBlock.add(s);
+						statementsForOuterBlock.add(s);
 					} else {
 						MessageSend call = new MessageSend();
 						call.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
@@ -335,7 +337,7 @@ public class FormalSpecification {
 						call.sourceEnd = e.sourceEnd;
 						call.nameSourcePosition = pos;
 
-						statementsForTryBlock.add(new AssertStatement(call, e.sourceStart));
+						statementsForOuterBlock.add(new AssertStatement(call, e.sourceStart));
 					}
 				}
 			}
@@ -415,7 +417,7 @@ public class FormalSpecification {
 							};
 							
 							s.action = new AssertStatement(mutatesCallWrapper, e.sourceStart);
-							statementsForTryBlock.add(s);
+							statementsForOuterBlock.add(s);
 						} else {
 							MessageSend mutatesCall = new MessageSend();
 							mutatesCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, pos);
@@ -485,30 +487,30 @@ public class FormalSpecification {
 								}
 								
 							};
-							statementsForTryBlock.add(new AssertStatement(mutatesCallWrapper, e.sourceStart));
+							statementsForOuterBlock.add(new AssertStatement(mutatesCallWrapper, e.sourceStart));
 						}
 					}
 				}
 			}
-			statementsForTryBlock.add(body);
 			
-			Block tryBlock = new Block(0);
-			tryBlock.statements = statementsForTryBlock.toArray(new Statement[statementsForTryBlock.size()]);
+			MessageSend activateCall = new MessageSend();
+			activateCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart);
+			activateCall.selector = "activate".toCharArray();
+			statementsForOuterBlock.add(activateCall);
 			
 			MessageSend popCall = new MessageSend();
 			popCall.receiver = new SingleNameReference(SPEC_FRAME_VARIABLE_NAME, this.method.bodyStart);
 			popCall.selector = "pop".toCharArray();
 			
 			TryStatement tryStatement = new TryStatement();
-			tryStatement.tryBlock = tryBlock;
+			tryStatement.tryBlock = body;
 			tryStatement.finallyBlock = new Block(0);
 			tryStatement.finallyBlock.statements = new Statement[] {popCall};
 			
+			statementsForOuterBlock.add(tryStatement);
+			
 			Block outerBlock = new Block(1);
-			outerBlock.statements = new Statement[] {
-					specFrameVariableDeclaration,
-					tryStatement
-			};
+			outerBlock.statements = statementsForOuterBlock.toArray(new Statement[statementsForOuterBlock.size()]);
 			
 			this.originalMethodStatements = new Statement[][] {this.method.statements};
 			this.method.statements = new Statement[] {outerBlock};

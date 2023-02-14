@@ -50,6 +50,7 @@ import org.eclipse.jdt.internal.compiler.ast.Expression;
 import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.FunctionalExpression;
 import org.eclipse.jdt.internal.compiler.ast.LambdaExpression;
+import org.eclipse.jdt.internal.compiler.ast.MessageSend;
 import org.eclipse.jdt.internal.compiler.ast.OperatorIds;
 import org.eclipse.jdt.internal.compiler.ast.ReferenceExpression;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
@@ -2570,11 +2571,30 @@ public void generateOuterAccess(Object[] mappingSequence, ASTNode invocationSite
 	for (int i = 1, length = mappingSequence.length; i < length; i++) {
 		if (mappingSequence[i] instanceof FieldBinding) {
 			FieldBinding fieldBinding = (FieldBinding) mappingSequence[i];
-			fieldAccess(Opcodes.OPC_getfield, fieldBinding, null /* default declaringClass */);
+			this.checkedGetField(scope, fieldBinding, null /* default declaringClass */);
 		} else {
 			invoke(Opcodes.OPC_invokestatic, (MethodBinding) mappingSequence[i], null /* default declaringClass */);
 		}
 	}
+}
+public void checkedGetField(Scope currentScope, FieldBinding fieldBinding, TypeBinding constantPoolDeclaringClass) {
+	if (currentScope != null) {
+		SourceTypeBinding enclosingSourceType = currentScope.enclosingSourceType();
+		if (enclosingSourceType != null && enclosingSourceType.scope != null && enclosingSourceType.scope.referenceContext != null) {
+			MessageSend assertCanInspectCall = enclosingSourceType.scope.referenceContext.assertCanInspectCall;
+			if (assertCanInspectCall != null) {
+				MethodBinding assertCanInspectMethodBinding = assertCanInspectCall.binding;
+				if (assertCanInspectMethodBinding != null) {
+					this.dup();
+					if (constantPoolDeclaringClass == null)
+						constantPoolDeclaringClass = fieldBinding.declaringClass;
+				    this.ldc(constantPoolDeclaringClass);
+				    this.invoke(Opcodes.OPC_invokestatic, assertCanInspectMethodBinding, null);
+				}
+			}
+		}
+	}
+	this.fieldAccess(Opcodes.OPC_getfield, fieldBinding, constantPoolDeclaringClass);
 }
 
 public void generateReturnBytecode(Expression expression) {

@@ -8,7 +8,7 @@ import org.eclipse.jdt.internal.compiler.parser.Parser;
 // The fact that this class extends 'Expression' is a hack. It allows instances to be stored in the expressionStack during parsing.
 public class FormalSpecificationClause extends Expression {
 
-	public static enum Tag { PRE, POST, THROWS, MAY_THROW, INVAR, INSPECTS, MUTATES, MUTATES_PROPERTIES, CREATES, REPRESENTATION_OBJECT, REPRESENTATION_OBJECTS, PEER_OBJECT, PEER_OBJECTS }
+	public static enum Tag { PRE, POST, THROWS, MAY_THROW, INVAR, INSPECTS, MUTATES, MUTATES_PROPERTIES, CREATES, REPRESENTATION_OBJECT, REPRESENTATION_OBJECTS, PEER_OBJECT, PEER_OBJECTS, IMMUTABLE }
 
 	public int tagStart;
 	public int tagEnd;

@@ -391,7 +391,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream, boolean
 							if (isStatic) {
 								codeStream.fieldAccess(Opcodes.OPC_getstatic, lastFieldBinding, constantPoolDeclaringClass);
 							} else {
-								codeStream.fieldAccess(Opcodes.OPC_getfield, lastFieldBinding, constantPoolDeclaringClass);
+								codeStream.checkedGetField(currentScope, lastFieldBinding, constantPoolDeclaringClass);
 							}
 						} else {
 							codeStream.invoke(Opcodes.OPC_invokestatic, accessor, null /* default declaringClass */);
@@ -448,7 +448,7 @@ public void generateCompoundAssignment(BlockScope currentScope, CodeStream codeS
 	} else {
 		codeStream.dup();
 		if (accessor == null) {
-			codeStream.fieldAccess(Opcodes.OPC_getfield, lastFieldBinding, constantPoolDeclaringClass);
+			codeStream.checkedGetField(currentScope, lastFieldBinding, constantPoolDeclaringClass);
 		} else {
 			codeStream.invoke(Opcodes.OPC_invokestatic, accessor, null /* default declaringClass */);
 		}
@@ -504,7 +504,7 @@ public void generatePostIncrement(BlockScope currentScope, CodeStream codeStream
 	} else {
 		codeStream.dup();
 		if (accessor == null) {
-			codeStream.fieldAccess(Opcodes.OPC_getfield, lastFieldBinding, null /* default declaringClass */);
+			codeStream.checkedGetField(currentScope, lastFieldBinding, null /* default declaringClass */);
 		} else {
 			codeStream.invoke(Opcodes.OPC_invokestatic, accessor, null /* default declaringClass */);
 		}
@@ -639,7 +639,7 @@ public FieldBinding generateReadSequence(BlockScope currentScope, CodeStream cod
 							if (lastFieldBinding.isStatic()) {
 								codeStream.fieldAccess(Opcodes.OPC_getstatic, lastFieldBinding, constantPoolDeclaringClass);
 							} else {
-								codeStream.fieldAccess(Opcodes.OPC_getfield, lastFieldBinding, constantPoolDeclaringClass);
+								codeStream.checkedGetField(currentScope, lastFieldBinding, constantPoolDeclaringClass);
 							}
 						} else {
 							codeStream.invoke(Opcodes.OPC_invokestatic, accessor, null /* default declaringClass */);

@@ -87,7 +87,10 @@ public class TypeDeclaration extends Statement implements ProblemSeverities, Ref
 	public int packageRepresentationInvariantsCount;
 	public SyntheticFieldBinding classInfoField;
 	public MessageSend registerClassInfoCall;
+	public MessageSend assertCanInspectCall;
 	public MessageSend assertCanMutateCall;
+	public FormalSpecificationClause immutableClause;
+	public MessageSend freezeCall;
 
 	public QualifiedAllocationExpression allocation; // for anonymous only
 	public TypeDeclaration enclosingType; // for member types only
@@ -1709,6 +1712,9 @@ public void resolve() {
 										}
 									}
 									break;
+								case IMMUTABLE:
+									// Ignore for now.
+									break;
 								default:
 									this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
 							}
@@ -1851,6 +1857,9 @@ public void resolve() {
 												statementsForPackageLevelPeerObjectIterator.add(s);
 											}
 										}
+										break;
+									case IMMUTABLE:
+										// Ignore for now.
 										break;
 									default:
 										this.scope.problemReporter().fsc4jTagNotAllowedHere(clause);
@@ -2032,6 +2041,15 @@ public void resolve() {
 				this.methods[i].resolve(this.scope);
 			}
 		}
+		this.assertCanInspectCall = new MessageSend();
+		this.assertCanInspectCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
+		this.assertCanInspectCall.selector = "assertCanInspect".toCharArray();
+		this.assertCanInspectCall.arguments = new Expression[] {
+				new NullLiteral(0, 0),
+				new NullLiteral(0, 0)
+		};
+		this.assertCanInspectCall.resolve(this.staticInitializerScope);
+		
 		this.assertCanMutateCall = new MessageSend();
 		this.assertCanMutateCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
 		this.assertCanMutateCall.selector = "assertCanMutate".toCharArray();
@@ -2041,6 +2059,17 @@ public void resolve() {
 		};
 		this.assertCanMutateCall.resolve(this.staticInitializerScope);
 
+		if (this.immutableClause != null) {
+			this.freezeCall = new MessageSend();
+			this.freezeCall.receiver = FormalSpecification.getQualifiedNameReference("fsc4j.EffectChecker", this.bodyStart);
+			this.freezeCall.selector = "freeze".toCharArray();
+			this.freezeCall.arguments = new Expression[] {
+					new NullLiteral(0, 0),
+					new NullLiteral(0, 0)
+			};
+			this.freezeCall.resolve(this.staticInitializerScope);
+		}
+		
 		// Resolve javadoc
 		if (this.javadoc != null) {
 			if (this.scope != null && (this.name != TypeConstants.PACKAGE_INFO_NAME)) {

@@ -474,7 +474,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream, boolean
 					// managing private access
 					if ((this.syntheticAccessors == null) || (this.syntheticAccessors[SingleNameReference.READ] == null)) {
 						TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, codegenField, this.actualReceiverType, true /* implicit this */);
-						codeStream.fieldAccess(Opcodes.OPC_getfield, codegenField, constantPoolDeclaringClass);
+						codeStream.checkedGetField(currentScope, codegenField, constantPoolDeclaringClass);
 					} else {
 						codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[SingleNameReference.READ], null /* default declaringClass */);
 					}
@@ -586,7 +586,7 @@ public void generateCompoundAssignment(BlockScope currentScope, CodeStream codeS
 				codeStream.dup();
 				if ((this.syntheticAccessors == null) || (this.syntheticAccessors[SingleNameReference.READ] == null)) {
 					TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, codegenField, this.actualReceiverType, true /* implicit this */);
-					codeStream.fieldAccess(Opcodes.OPC_getfield, codegenField, constantPoolDeclaringClass);
+					codeStream.checkedGetField(currentScope, codegenField, constantPoolDeclaringClass);
 				} else {
 					codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[SingleNameReference.READ], null /* default declaringClass */);
 				}
@@ -743,7 +743,7 @@ public void generatePostIncrement(BlockScope currentScope, CodeStream codeStream
 				codeStream.dup();
 				if ((this.syntheticAccessors == null) || (this.syntheticAccessors[SingleNameReference.READ] == null)) {
 					TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, codegenField, this.actualReceiverType, true /* implicit this */);
-					codeStream.fieldAccess(Opcodes.OPC_getfield, codegenField, constantPoolDeclaringClass);
+					codeStream.checkedGetField(currentScope, codegenField, constantPoolDeclaringClass);
 				} else {
 					codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[SingleNameReference.READ], null /* default declaringClass */);
 				}

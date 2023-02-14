@@ -4888,7 +4888,13 @@ private Annotation[] consumeTypeDeclarationAnnotations(TypeDeclaration td) {
 	}
 	if (this.scanner.javadocNakedFormalClauses != null) {
 		for (FormalSpecificationClause clause : this.scanner.javadocNakedFormalClauses)
-			this.problemReporter().fsc4jTagNotAllowedHere(clause);
+			switch (clause.tag) {
+				case IMMUTABLE:
+					td.immutableClause = clause;
+					break;
+				default:
+					this.problemReporter().fsc4jTagNotAllowedHere(clause);
+			}
 		this.scanner.javadocNakedFormalClauses = null;
 	}
 	return result;

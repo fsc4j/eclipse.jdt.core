@@ -469,6 +469,11 @@ public abstract class AbstractMethodDeclaration
 			codeStream.iconst_0();
 			codeStream.fieldAccess(Opcodes.OPC_putfield, enclosingClass.invariantsCheckingStateField, enclosingClass.binding);
 		}
+		if (this instanceof ConstructorDeclaration && enclosingClass.immutableClause != null) {
+			codeStream.aload_0();
+			codeStream.ldc(enclosingClass.binding);
+			codeStream.invoke(Opcodes.OPC_invokestatic, enclosingClass.freezeCall.binding, null);
+		}
 	}
 
 	public void getAllAnnotationContexts(int targetType, List allAnnotationContexts) {

@@ -145,11 +145,12 @@ enum PermissionLevel {
 	
 }
 
-enum PermissionToken {
-	CLAIMED_INSPECT,
+enum PermissionToken { // Sorted from less powerful to more powerful. addPermissionFor replaces a less powerful token by a more powerful one.
 	DELEGATED_INSPECT,
+	CLAIMED_INSPECT,
 	IMMUTABLE,
-	MUTATE;
+	DELEGATED_MUTATE,
+	CLAIMED_MUTATE;
 }
 
 public class EffectChecker {
@@ -177,13 +178,13 @@ public class EffectChecker {
 		private void addPermissionFor(Class<?> classObject, Object object, PermissionToken token) {
 			WeakHashMap<Class<?>, PermissionToken> map = getPermissionMapForObject(object);
 			PermissionToken oldToken = map.get(classObject);
-			if (oldToken == null || token == PermissionToken.MUTATE) {
+			if (oldToken == null || oldToken.ordinal() < token.ordinal()) {
 				map.put(classObject, token);
-			} // Otherwise, we have a PermissionLevel.INSPECT token and we are adding a PermissionLevel.INSPECT token so do nothing.
+			}
 		}
 
 		private void addPermissionFor(Class<?> classObject, Object object, PermissionLevel level) {
-			addPermissionFor(classObject, object, level == PermissionLevel.MUTATE ? PermissionToken.MUTATE : PermissionToken.DELEGATED_INSPECT);
+			addPermissionFor(classObject, object, level == PermissionLevel.MUTATE ? PermissionToken.DELEGATED_MUTATE : PermissionToken.DELEGATED_INSPECT);
 		}
 
 		void assertPermission(Object object, Class<?> classObject, PermissionLevel level) {
@@ -246,12 +247,12 @@ public class EffectChecker {
 				return;
 			WeakHashMap<Class<?>, PermissionToken> permissionMap = getPermissionMapForObject(object);
 			PermissionToken token = permissionMap.get(classObject);
-			if (token == PermissionToken.MUTATE)
+			if (token == PermissionToken.CLAIMED_MUTATE || token == PermissionToken.DELEGATED_MUTATE)
 				return;
 			if (token == PermissionToken.CLAIMED_INSPECT) {
 				var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
-				if (claimedPermissionsMap.replace(classObject, token, PermissionToken.MUTATE)) {
-					permissionMap.put(classObject, PermissionToken.MUTATE);
+				if (claimedPermissionsMap.replace(classObject, token, PermissionToken.CLAIMED_MUTATE)) {
+					permissionMap.put(classObject, PermissionToken.CLAIMED_MUTATE);
 					return;
 				}
 				throw new AssertionError("This code does not have permission to mutate this object; it is immutable.");
@@ -260,8 +261,8 @@ public class EffectChecker {
 			} else {
 				if (token == null) {
 					var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
-					if (claimedPermissionsMap.putIfAbsent(classObject, PermissionToken.MUTATE) == null) {
-						permissionMap.put(classObject, PermissionToken.MUTATE);
+					if (claimedPermissionsMap.putIfAbsent(classObject, PermissionToken.CLAIMED_MUTATE) == null) {
+						permissionMap.put(classObject, PermissionToken.CLAIMED_MUTATE);
 						return;
 					}
 				}
@@ -271,6 +272,38 @@ public class EffectChecker {
 		
 		public void assertCanMutate(Object object) {
 			assertCanMutate(object, object.getClass());
+		}
+		
+		public void freeze(Object object, Class<?> classObject) {
+			if (classObject == Object.class)
+				return;
+			WeakHashMap<Class<?>, PermissionToken> permissionMap = getPermissionMapForObject(object);
+			PermissionToken token = permissionMap.get(classObject);
+			if (token == PermissionToken.IMMUTABLE)
+				return;
+			if (token == PermissionToken.DELEGATED_INSPECT || token == PermissionToken.DELEGATED_MUTATE)
+				throw new AssertionError("This code does not have permission to freeze this object.");
+			if (token == PermissionToken.CLAIMED_MUTATE || token == PermissionToken.CLAIMED_INSPECT) {
+				var claimedPermissionsMap = getClaimedPermissionsMapForObject(object);
+				claimedPermissionsMap.put(classObject, PermissionToken.IMMUTABLE);
+				permissionMap.put(classObject, PermissionToken.IMMUTABLE);
+				return;
+			} else {
+				assert token == null;
+				WeakConcurrentIdentityHashMap<Class<?>, PermissionToken> claimedPermissions = getClaimedPermissionsMapForObject(object);
+				PermissionToken oldToken = claimedPermissions.putIfAbsent(classObject, PermissionToken.IMMUTABLE);
+				if (oldToken == null || oldToken == PermissionToken.IMMUTABLE) {
+					permissionMap.put(classObject, PermissionToken.IMMUTABLE);
+					return;
+				}
+				if (oldToken == PermissionToken.CLAIMED_INSPECT) {
+					if (claimedPermissions.replace(classObject, oldToken, PermissionToken.IMMUTABLE)) {
+						permissionMap.put(classObject, PermissionToken.IMMUTABLE);
+						return;
+					}
+				}
+				throw new AssertionError("This code does not have permission to freeze this object.");
+			}
 		}
 		
 		private void requiresPermission0(Object object, Class<?> classObject, PermissionLevel level) {
@@ -412,6 +445,17 @@ public class EffectChecker {
 			return true;
 		}
 		
+		public void activate() {
+			// TODO: Currently, client code can break the invariants by creating a new frame, then requiring a Mutate permission on some object O,
+			// and then freezing O. At that point, this frame has Mutate permission on O while O is immutable.
+			// One way to prevent this is to replace a ClaimedMutate token from the caller by an InactiveClaimedMutate token when a callee requires it, and to restore it when the callee
+			// is popped.
+			// Another way is to mark the enclosing frame as inactive when a new frame is created, and to not allow freezing on inactive frames.
+			if (specificationStackVariable.get() != enclosingFrame)
+				throw new AssertionError("Enclosing frame not active");
+			specificationStackVariable.set(this);
+		}
+		
 		public void pop() {
 			if (specificationStackVariable.get() != this)
 				throw new AssertionError("Cannot pop a specification frame that is not the top frame.");
@@ -493,10 +537,20 @@ public class EffectChecker {
 		specificationStack.assertCanMutate(object);
 	}
 	
-	public static SpecificationFrame pushNewFrame() {
+	public static void freeze(Object object, Class<?> classObject) {
+		SpecificationFrame specificationStack = specificationStackVariable.get();
+		if (specificationStack != null)
+			specificationStack.freeze(object, classObject);
+		else {
+			// This is sound provided that whenever a thread's specification stack is null, it is the only thread.
+			WeakConcurrentIdentityHashMap<Class<?>, PermissionToken> claimedPermissions = getClaimedPermissionsMapForObject(object);
+			claimedPermissions.put(classObject, PermissionToken.IMMUTABLE);
+		}
+	}
+	
+	public static SpecificationFrame createNewFrame() {
 		SpecificationFrame specificationStack = specificationStackVariable.get();
 		SpecificationFrame result = new SpecificationFrame(specificationStack);
-		specificationStackVariable.set(result);
 		return result;
 	}
 	

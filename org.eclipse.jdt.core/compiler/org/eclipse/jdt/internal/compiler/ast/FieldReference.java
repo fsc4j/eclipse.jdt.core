@@ -289,7 +289,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream, boolean
 				if (isStatic) {
 					codeStream.fieldAccess(Opcodes.OPC_getstatic, codegenBinding, constantPoolDeclaringClass);
 				} else {
-					codeStream.fieldAccess(Opcodes.OPC_getfield, codegenBinding, constantPoolDeclaringClass);
+					codeStream.checkedGetField(currentScope, codegenBinding, constantPoolDeclaringClass);
 				}
 			} else {
 				codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[FieldReference.READ], null /* default declaringClass */);
@@ -363,7 +363,7 @@ public void generateCompoundAssignment(BlockScope currentScope, CodeStream codeS
 		codeStream.dup();
 		if (this.syntheticAccessors == null || this.syntheticAccessors[FieldReference.READ] == null) {
 			TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, codegenBinding, this.actualReceiverType, this.receiver.isImplicitThis());
-			codeStream.fieldAccess(Opcodes.OPC_getfield, codegenBinding, constantPoolDeclaringClass);
+			codeStream.checkedGetField(currentScope, codegenBinding, constantPoolDeclaringClass);
 		} else {
 			codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[FieldReference.READ], null /* default declaringClass */);
 		}
@@ -413,7 +413,7 @@ public void generatePostIncrement(BlockScope currentScope, CodeStream codeStream
 		codeStream.dup();
 		if (this.syntheticAccessors == null || this.syntheticAccessors[FieldReference.READ] == null) {
 			TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(currentScope, codegenBinding, this.actualReceiverType, this.receiver.isImplicitThis());
-			codeStream.fieldAccess(Opcodes.OPC_getfield, codegenBinding, constantPoolDeclaringClass);
+			codeStream.checkedGetField(currentScope, codegenBinding, constantPoolDeclaringClass);
 		} else {
 			codeStream.invoke(Opcodes.OPC_invokestatic, this.syntheticAccessors[FieldReference.READ], null /* default declaringClass */);
 		}

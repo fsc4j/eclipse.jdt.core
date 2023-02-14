@@ -2381,6 +2381,7 @@ lineLoop:
 							case REPRESENTATION_OBJECTS:
 							case PEER_OBJECT:
 							case PEER_OBJECTS:
+							case IMMUTABLE:
 								if (this.javadocNakedFormalClauses == null)
 									this.javadocNakedFormalClauses = new ArrayList<>();
 								this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
@@ -2411,6 +2412,7 @@ lineLoop:
 						case "representationObjects": lastTagSeen = FormalSpecificationClause.Tag.REPRESENTATION_OBJECTS; break;
 						case "peerObject": lastTagSeen = FormalSpecificationClause.Tag.PEER_OBJECT; break;
 						case "peerObjects": lastTagSeen = FormalSpecificationClause.Tag.PEER_OBJECTS; break;
+						case "immutable": lastTagSeen = FormalSpecificationClause.Tag.IMMUTABLE; break;
 						default: lastTagSeen = null; break;
 					}
 					lastTagArgumentSeen = null;
@@ -2525,6 +2527,7 @@ lineLoop:
 			case REPRESENTATION_OBJECTS:
 			case PEER_OBJECT:
 			case PEER_OBJECTS:
+			case IMMUTABLE:
 				if (this.javadocNakedFormalClauses == null)
 					this.javadocNakedFormalClauses = new ArrayList<>();
 				this.javadocNakedFormalClauses.add(new FormalSpecificationClause(this.javadocFormalPartTagStart, this.javadocFormalPartTagEnd, lastTagSeen, lastTagArgumentSeen, null));
