@@ -20,11 +20,14 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.codegen.Opcodes;
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
 import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
 import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
 import org.eclipse.jdt.internal.compiler.lookup.TagBits;
 import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
@@ -92,10 +95,51 @@ public void generateAssignment(BlockScope currentScope, CodeStream codeStream, A
 	codeStream.recordPositionsFrom(pc, this.sourceStart);
 	this.position.generateCode(currentScope, codeStream, true);
 	assignment.expression.generateCode(currentScope, codeStream, true);
-	codeStream.arrayAtPut(this.resolvedType.id, valueRequired);
+	checkedArrayAtPut(currentScope, codeStream, valueRequired);
 	if (valueRequired) {
 		codeStream.generateImplicitConversion(assignment.implicitConversion);
 	}
+}
+
+private void checkedArrayAtPut(BlockScope currentScope, CodeStream codeStream, boolean valueRequired) {
+	if (currentScope != null) {
+		SourceTypeBinding enclosingSourceType = currentScope.enclosingSourceType();
+		if (enclosingSourceType != null && enclosingSourceType.scope != null && enclosingSourceType.scope.referenceContext != null) {
+			MessageSend assertCanMutateCall = enclosingSourceType.scope.referenceContext.assertCanMutateCall;
+			if (assertCanMutateCall != null) {
+				MethodBinding assertCanMutateMethodBinding = assertCanMutateCall.binding;
+				if (assertCanMutateMethodBinding != null) {
+					// Stack: [array][index][rhs]
+					switch (this.resolvedType.id) {
+						case TypeIds.T_long :
+						case TypeIds.T_double :
+							codeStream.dup2_x2();
+							// Stack: [rhs][array][index][rhs]
+							codeStream.pop2();
+							// Stack: [rhs][array][index]
+							codeStream.dup2_x2();
+							// Stack: [array][index][rhs][array][index]
+							codeStream.pop();
+							break;
+						default :
+							codeStream.dup_x2();
+							// Stack: [rhs][array][index][rhs]
+							codeStream.pop();
+							// Stack: [rhs][array][index]
+							codeStream.dup2_x1();
+							// Stack: [array][index][rhs][array][index]
+							codeStream.pop();
+							break;
+					}
+					// Stack: [array][index][rhs][array]
+					codeStream.dup();
+					codeStream.invokeObjectGetClass();
+				    codeStream.invoke(Opcodes.OPC_invokestatic, assertCanMutateMethodBinding, null);
+				}
+			}
+		}
+	}
+	codeStream.arrayAtPut(this.resolvedType.id, valueRequired);
 }
 
 /**
@@ -161,7 +205,7 @@ public void generateCompoundAssignment(BlockScope currentScope, CodeStream codeS
 			// cast the value back to the array reference type
 			codeStream.generateImplicitConversion(assignmentImplicitConversion);
 	}
-	codeStream.arrayAtPut(this.resolvedType.id, valueRequired);
+	checkedArrayAtPut(currentScope, codeStream, valueRequired);
 }
 
 @Override
@@ -192,7 +236,7 @@ public void generatePostIncrement(BlockScope currentScope, CodeStream codeStream
 	codeStream.sendOperator(postIncrement.operator, this.implicitConversion & TypeIds.COMPILE_TYPE_MASK);
 	codeStream.generateImplicitConversion(
 		postIncrement.preAssignImplicitConversion);
-	codeStream.arrayAtPut(this.resolvedType.id, false);
+	checkedArrayAtPut(currentScope, codeStream, false);
 }
 
 @Override
