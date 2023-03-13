@@ -4666,7 +4666,7 @@ private static boolean isParentOf(char[] folderName, char[] fileName) {
 	}
 	return true;
 }
-private static final String[] fsc4jRuntimeFilenames = {
+public static final String[] fsc4jRuntimeFilenames = {
 		"fsc4j/EffectChecker.class",
 		"fsc4j/WeakConcurrentIdentityHashMap.class",
 		"fsc4j/UnitType.class",

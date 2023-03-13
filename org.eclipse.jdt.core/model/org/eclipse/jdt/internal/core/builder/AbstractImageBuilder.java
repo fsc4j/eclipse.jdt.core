@@ -20,6 +20,7 @@ import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.compiler.*;
 import org.eclipse.jdt.internal.compiler.*;
 import org.eclipse.jdt.internal.compiler.Compiler;
+import org.eclipse.jdt.internal.compiler.batch.Main;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.ICompilationUnit;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -199,6 +200,11 @@ public void acceptResult(CompilationResult result) {
 				else
 					createProblemFor(compilationUnit.resource, null, Messages.build_inconsistentClassFile, JavaCore.ERROR);
 			}
+		}
+		try {
+			writeFsc4jRuntimeClassFiles(compilationUnit);
+		} catch (CoreException e) {
+			throw new RuntimeException(e);
 		}
 		if (result.hasAnnotations && this.filesWithAnnotations != null) // only initialized if an annotation processor is attached
 			this.filesWithAnnotations.add(compilationUnit);
@@ -851,7 +857,28 @@ protected void updateTasksFor(SourceFile sourceFile, CompilationResult result) t
 
 	storeTasksFor(sourceFile, tasks);
 }
-
+private void writeFsc4jRuntimeClassFiles(SourceFile compilationUnit) throws CoreException {
+	for (String filename : Main.fsc4jRuntimeFilenames) {
+		IPath filePath = new Path(filename);
+		IContainer outputFolder = compilationUnit.sourceLocation.binaryFolder;
+		IContainer container = outputFolder;
+		if (filePath.segmentCount() > 1) {
+			container = createFolder(filePath.removeLastSegments(1), outputFolder);
+			filePath = new Path(filePath.lastSegment());
+		}
+		
+		IFile file = container.getFile(filePath);
+		if (file.exists())
+			break;
+		try {
+			try (InputStream input = Main.class.getClassLoader().getResourceAsStream(filename)) {
+				file.create(input, IResource.FORCE | IResource.DERIVED, null);
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+}
 protected char[] writeClassFile(ClassFile classFile, SourceFile compilationUnit, boolean isTopLevelType) throws CoreException {
 	String fileName = new String(classFile.fileName()); // the qualified type name "p1/p2/A"
 	IPath filePath = new Path(fileName);

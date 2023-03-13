@@ -304,11 +304,25 @@ public class EffectChecker {
 		assertCanCreate(object, object.getClass());
 	}
 
+	public static void assertCanInspect(Object object, Class<?> classObject) {
+		SpecificationFrame specificationStack = specificationStackVariable.get();
+		if (specificationStack == null)
+			return;
+		specificationStack.assertCanInspect(object, classObject);
+	}
+	
 	public static void assertCanInspect(Object object) {
 		SpecificationFrame specificationStack = specificationStackVariable.get();
 		if (specificationStack == null)
 			return;
 		specificationStack.assertCanInspect(object);
+	}
+	
+	public static void assertCanMutate(Object object, Class<?> classObject) {
+		SpecificationFrame specificationStack = specificationStackVariable.get();
+		if (specificationStack == null)
+			return;
+		specificationStack.assertCanMutate(object, classObject);
 	}
 	
 	public static void assertCanMutate(Object object) {
