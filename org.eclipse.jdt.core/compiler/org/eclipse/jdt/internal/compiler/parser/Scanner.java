@@ -99,10 +99,10 @@ public class Scanner implements TerminalTokens {
 
 	//all javadoc comments
 	private final static int JAVADOC_COMMENT_ARRAYS_SIZE = 30;
-	private int[] javadocCommentStops = new int[JAVADOC_COMMENT_ARRAYS_SIZE];
-	private int[] javadocCommentStarts = new int[JAVADOC_COMMENT_ARRAYS_SIZE];
-	private int javadocCommentPtr = -1;
-	private int endOfLastJavadocComment = 0;
+	protected int[] javadocCommentStops = new int[JAVADOC_COMMENT_ARRAYS_SIZE];
+	protected int[] javadocCommentStarts = new int[JAVADOC_COMMENT_ARRAYS_SIZE];
+	protected int javadocCommentPtr = -1;
+	protected int endOfLastJavadocComment = 0;
 
 	public static class JavadocCommentsInfo {
 		int sourceLength;
@@ -2338,7 +2338,7 @@ protected int scanForTextBlock() throws InvalidInputException {
 public int javadocFormalPartTagStart;
 public int javadocFormalPartTagEnd;
 public FormalSpecificationClause.Tag javadocFormalPartTag;
-private int skipToNextJavadocFormalLine(boolean insideFormalPart) {
+protected int skipToNextJavadocFormalLine(boolean insideFormalPart) {
 	char[] src = this.source;
 	String lastTagSeen = null;
 
