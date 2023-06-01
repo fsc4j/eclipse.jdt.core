@@ -21,7 +21,7 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
         cache: maven
-    - name: Install settings.xml and toolchains.xml
+    - name: Install toolchains.xml
       run: |
         mkdir -p $HOME/.m2
         cat $HOME/.m2/toolchains.xml
