@@ -24,9 +24,7 @@ jobs:
     - name: Install settings.xml and toolchains.xml
       run: |
         mkdir -p $HOME/.m2
-        cat $HOME/.m2/settings.xml
         cat $HOME/.m2/toolchains.xml
-        cp maven-settings.xml $HOME/.m2
         cat << EOF > $HOME/.m2/toolchains.xml
         <toolchains>
           <toolchain>
@@ -55,4 +53,4 @@ jobs:
         set -e
         cd eclipse.jdt.core/org.eclipse.jdt.core
         java -cp target/classes org.eclipse.jdt.internal.compiler.batch.Main -11 -proc:none -d target/classes s4jie2-tests/runner
-        java -cp target/classes org.eclipse.jdt.core.s4je2TestSuite
+        java -cp target/classes org.eclipse.jdt.core.s4jie2TestSuite
