@@ -51,8 +51,8 @@ jobs:
     - name: Build and run FSC4J test suite
       run: |
         set -e
+        cd eclipse.jdt.core/org.eclipse.jdt.core
         mvn dependency:copy -Dartifact=org.junit.platform:junit-platform-console-standalone:1.7.0
         export JUNIT_HOME=`pwd`/target/dependency/junit-platform-console-standalone-1.7.0.jar
-        cd eclipse.jdt.core/org.eclipse.jdt.core
         java -cp target/classes org.eclipse.jdt.internal.compiler.batch.Main -11 -proc:none -d target/classes s4jie2-tests/runner
         java -cp target/classes org.eclipse.jdt.core.s4jie2TestSuite
