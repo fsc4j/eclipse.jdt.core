@@ -246,6 +246,8 @@ public class s4jie2TestSuite {
 			deleteFileTree(binPath);
 		if (new File(multifileBinPath).exists())
 			deleteFileTree(multifileBinPath);
+		
+		testCompile("bug561565", true, "", "");
 
 		testCompile("Minimal", true, "", "");
 
