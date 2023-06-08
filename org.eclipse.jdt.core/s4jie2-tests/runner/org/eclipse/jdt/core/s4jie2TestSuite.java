@@ -72,6 +72,19 @@ public class s4jie2TestSuite {
 			System.exit(1);
 		}
 	}
+	
+	public static void assertContainsSubstring(String str, String substr, String msg) {
+		if (!normalize(str).contains(normalize(substr))) {
+			System.err.println("FAIL " + msg + " is not as expected. The expected string is not a substring of the actual string");
+			System.err.println("=== expected START ===");
+			System.err.println(substr);
+			System.err.println("=== expected END ===");
+			System.err.println("=== actual START ===");
+			System.err.println(str);
+			System.err.println("=== actual END ===");
+			System.exit(1);
+		}
+	}
 
 	private static final String binPath = "s4jie2-tests/bin";
 	private static final String multifileBinPath = "s4jie2-tests/bin_multifile";
@@ -186,6 +199,43 @@ public class s4jie2TestSuite {
 		assertEquals(stderr, errExpected, "standard error");
 		System.out.println("PASS Test "+ filename + " execution success");
 	}
+	
+	public static void testPartOfStringCompileAndRun(boolean enableAssertions, String filename, boolean expectedSuccess, String partOfOutExpected, String partOfErrExpected) throws IOException {
+		testCompile(filename, true, "", "");
+
+		String classpath = binPath+"/"+filename;
+		Process process = new ProcessBuilder(System.getProperty("java.home") + "/bin/java", "-classpath", classpath, enableAssertions ? "-ea" : "-da", "Main").start();
+		StringBuilder stdoutBuffer = new StringBuilder();
+		Thread stdoutThread = new Thread(() -> readFullyInto(process.getInputStream(), stdoutBuffer));
+		stdoutThread.start();
+		StringBuilder stderrBuffer = new StringBuilder();
+		Thread stderrThread = new Thread(() -> readFullyInto(process.getErrorStream(), stderrBuffer));
+		stderrThread.start();
+		int exitCode;
+		try {
+			exitCode = process.waitFor();
+			stdoutThread.join();
+			stderrThread.join();
+		} catch (InterruptedException e) {
+			throw new AssertionError(e);
+		}
+		String stdout = stdoutBuffer.toString();
+		String stderr = stderrBuffer.toString();
+
+		if ((exitCode == 0) != expectedSuccess) {
+			System.err.println("FAIL execution success: expected: " + expectedSuccess + "; actual: exit code " + exitCode);
+			System.err.println("=== standard output start ===");
+			System.err.println(stdout);
+			System.err.println("=== standard output end ===");
+			System.err.println("=== standard error start ===");
+			System.err.println(stderr);
+			System.err.println("=== standard error end ===");
+			System.exit(1);
+		}
+		assertContainsSubstring(stdout, partOfOutExpected, "standard output");
+		assertContainsSubstring(stderr, partOfErrExpected, "standard error");
+		System.out.println("PASS Test "+ filename + " execution success");
+	}
 
 	public static void testCompileAndRunMultifile(String rootDirectory, boolean expectedSuccess, String outExpected, String errExpected) throws IOException {
 		testCompileMultifile(rootDirectory, true, "", "");
@@ -246,9 +296,202 @@ public class s4jie2TestSuite {
 			deleteFileTree(binPath);
 		if (new File(multifileBinPath).exists())
 			deleteFileTree(multifileBinPath);
+		
+		testPartOfStringCompileAndRun(true, "throw_exception_not_specified", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(throw_exception_not_specified.java:7)\n"
+				+ "	at Foo.bar$spec(throw_exception_not_specified.java)\n"
+				+ "	at Main.main(throw_exception_not_specified.java:14)");
+		testCompile("no_throw_exception_type", false, "",
+				"----------\n" + 
+				"1. ERROR in SOURCE_FILE_FULL_PATH (at line 4)\n" +
+				"	* @throws | false\n" +
+				"	  ^^^^^^^\n" +
+				"Exception type expected after @throws tag\n" +
+				"----------\n" +
+				"1 problem (1 error)\n");
+		testCompile("no_may_throw_exception_type", false, "",
+				"----------\n" + 
+				"1. ERROR in SOURCE_FILE_FULL_PATH (at line 4)\n" +
+				"	* @may_throw | false\n" +
+				"	  ^^^^^^^^^^\n" +
+				"Exception type expected after @may_throw tag\n" +
+				"----------\n" +
+				"1 problem (1 error)\n");
+		testCompileAndRun(true, "correct_throw_exception", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(correct_throw_exception.java:7)\n"
+				+ "	at Foo.bar$spec(correct_throw_exception.java)\n"
+				+ "	at Main.main(correct_throw_exception.java:14)\n");
+		testPartOfStringCompileAndRun(true, "incorrect_throw_exception", false, "",
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(incorrect_throw_exception.java:7)\n"
+				+ "	at Foo.bar$spec(incorrect_throw_exception.java)\n"
+				+ "	at Main.main(incorrect_throw_exception.java:14)\n");
+		testCompileAndRun(true, "incorrect_throw_exception_no_throw", true, "", "");
+		testCompileAndRun(true, "correct_non_trivial_throw_exception", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(correct_non_trivial_throw_exception.java:8)\n"
+				+ "	at Foo.bar$spec(correct_non_trivial_throw_exception.java)\n"
+				+ "	at Main.main(correct_non_trivial_throw_exception.java:15)\n");
+		testCompileAndRun(true, "correct_non_trivial_throw_exception_no_throw", true, "", "");
+		testCompileAndRun(true, "correct_may_throw_exception", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(correct_may_throw_exception.java:7)\n"
+				+ "	at Foo.bar$spec(correct_may_throw_exception.java)\n"
+				+ "	at Main.main(correct_may_throw_exception.java:14)\n");
+		testCompileAndRun(true, "correct_throw_may_throw_exception", false, "",
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Foo.bar(correct_throw_may_throw_exception.java:8)\n"
+				+ "	at Foo.bar$spec(correct_throw_may_throw_exception.java)\n"
+				+ "	at Main.main(correct_throw_may_throw_exception.java:15)\n");
+		testCompileAndRun(true, "no_exception_throw_condition_satisfied", false, 
+				"",
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(no_exception_throw_condition_satisfied.java:6)\n"
+				+ "	at Main.foo(no_exception_throw_condition_satisfied.java:7)\n"
+				+ "	at Main.main(no_exception_throw_condition_satisfied.java:11)\n");
+		testPartOfStringCompileAndRun(true, "wrong_exception_throw_condition_satisfied", false, "", 
+				"SEVERE: @throws condition holds but specified exception type not thrown\n");
+		testPartOfStringCompileAndRun(true, "wrong_exception_throw_condition_satisfied", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(wrong_exception_throw_condition_satisfied.java:7)\n"
+				+ "	at Main.main(wrong_exception_throw_condition_satisfied.java:11)\n");
+		testCompileAndRun(true, "no_throw_may_throw_condition_satisfied", true, "", "");
+		testCompileAndRun(true, "no_throw_may_throw_condition_not_satisfied", true, "", "");
+		testCompileAndRun(true, "multiple_throw_conditions_satisfied_no_throw", false, "",
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(multiple_throw_conditions_satisfied_no_throw.java:7)\n"
+				+ "	at Main.foo(multiple_throw_conditions_satisfied_no_throw.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_satisfied_no_throw.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_throw_conditions_satisfied_throw_second", false, "",
+				"SEVERE: @throws condition holds but specified exception type not thrown\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_throw_conditions_satisfied_throw_second.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_satisfied_throw_second.java:12)\n");
+		testCompileAndRun(true, "multiple_throw_conditions_satisfied_throw_first", false, "",
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_throw_conditions_satisfied_throw_first.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_satisfied_throw_first.java:12)\n");
+		testCompileAndRun(true, "multiple_throw_conditions_first_satisfied_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_throw_conditions_first_satisfied_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_first_satisfied_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_throw_conditions_second_satisfied_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_throw_conditions_second_satisfied_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_second_satisfied_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_throw_conditions_none_satisfied_none_thrown", true, "", "");
+		testCompileAndRun(true, "multiple_throw_conditions_first_satisfied_none_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(multiple_throw_conditions_first_satisfied_none_thrown.java:7)\n"
+				+ "	at Main.foo(multiple_throw_conditions_first_satisfied_none_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_first_satisfied_none_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_throw_conditions_second_satisfied_none_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(multiple_throw_conditions_second_satisfied_none_thrown.java:7)\n"
+				+ "	at Main.foo(multiple_throw_conditions_second_satisfied_none_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_second_satisfied_none_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_throw_conditions_none_satisfied_first_thrown", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_throw_conditions_none_satisfied_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_none_satisfied_first_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_throw_conditions_none_satisfied_second_thrown", false, "",
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_throw_conditions_none_satisfied_second_thrown.java:8)\n"
+				+ "	at Main.main(multiple_throw_conditions_none_satisfied_second_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_may_throw_conditions_none_satisfied_no_throw", true, "", "");
+		testCompileAndRun(true, "multiple_may_throw_conditions_first_satisfied_no_throw", true, "", "");
+		testCompileAndRun(true, "multiple_may_throw_conditions_second_satisfied_no_throw", true, "", "");
+		testCompileAndRun(true, "multiple_may_throw_conditions_satisfied_no_throw", true, "", "");
+		testPartOfStringCompileAndRun(true, "multiple_may_throw_conditions_none_satisfied_first_thrown", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_none_satisfied_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_none_satisfied_first_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_may_throw_conditions_none_satisfied_second_thrown", false, "",
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_none_satisfied_second_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_none_satisfied_second_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_may_throw_conditions_first_satisfied_first_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_first_satisfied_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_first_satisfied_first_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_may_throw_conditions_first_satisfied_second_thrown", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_first_satisfied_second_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_first_satisfied_second_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_may_throw_conditions_second_satisfied_first_thrown", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_second_satisfied_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_second_satisfied_first_thrown.java:12)");
+		testCompileAndRun(true, "multiple_may_throw_conditions_second_satisfied_second_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_second_satisfied_second_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_second_satisfied_second_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_may_throw_conditions_satisfied_first_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_satisfied_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_satisfied_first_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_may_throw_conditions_satisfied_second_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(multiple_may_throw_conditions_satisfied_second_thrown.java:8)\n"
+				+ "	at Main.main(multiple_may_throw_conditions_satisfied_second_thrown.java:12)\n");
+		testCompileAndRun(true, "multiple_non_trivial_throw_conditions_first_satisfied_no_throw", false, "", 
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(multiple_non_trivial_throw_conditions_first_satisfied_no_throw.java:7)\n"
+				+ "	at Main.foo(multiple_non_trivial_throw_conditions_first_satisfied_no_throw.java:8)\n"
+				+ "	at Main.main(multiple_non_trivial_throw_conditions_first_satisfied_no_throw.java:12)\n");
+		testCompileAndRun(true, "multiple_non_trivial_throws_first_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_non_trivial_throws_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_non_trivial_throws_first_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "multiple_non_trivial_incorrect_throws_first_thrown", false, "", 
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(multiple_non_trivial_incorrect_throws_first_thrown.java:8)\n"
+				+ "	at Main.main(multiple_non_trivial_incorrect_throws_first_thrown.java:12)\n");
+		testCompileAndRun(true, "incorrect_non_trivial_throws_no_throw", true, "", "");
+		testPartOfStringCompileAndRun(true, "incorrect_non_trivial_throws_second_thrown", false, "",
+				"SEVERE: The thrown exception was not specified in the formal specification\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(incorrect_non_trivial_throws_second_thrown.java:8)\n"
+				+ "	at Main.main(incorrect_non_trivial_throws_second_thrown.java:12)\n");
+		testCompileAndRun(true, "non_trivial_throws_no_throw", false, "", 
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(non_trivial_throws_no_throw.java:7)\n"
+				+ "	at Main.foo(non_trivial_throws_no_throw.java:8)\n"
+				+ "	at Main.main(non_trivial_throws_no_throw.java:12)\n");
+		testPartOfStringCompileAndRun(true, "non_trivial_throws_first_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.IllegalArgumentException\n"
+				+ "	at Main.foo(non_trivial_throws_first_thrown.java:8)\n"
+				+ "	at Main.main(non_trivial_throws_first_thrown.java:12)\n");
+		testPartOfStringCompileAndRun(true, "non_trivial_throws_second_thrown", false, "", 
+				"SEVERE: @throws condition holds but specified exception type not thrown\n"
+				+ "Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(non_trivial_throws_second_thrown.java:9)\n"
+				+ "	at Main.main(non_trivial_throws_second_thrown.java:13)\n");
+		testCompileAndRun(true, "non_trivial_throws_second_correct_no_throw", false, "", 
+				"Exception in thread \"main\" java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+				+ "	at Main.foo$post(non_trivial_throws_second_correct_no_throw.java:7)\n"
+				+ "	at Main.foo(non_trivial_throws_second_correct_no_throw.java:8)\n"
+				+ "	at Main.main(non_trivial_throws_second_correct_no_throw.java:12)\n");
+		testCompileAndRun(true, "non_trivial_throws_second_correct_second_thrown", false, "", 
+				"Exception in thread \"main\" java.lang.ArithmeticException\n"
+				+ "	at Main.foo(non_trivial_throws_second_correct_second_thrown.java:8)\n"
+				+ "	at Main.main(non_trivial_throws_second_correct_second_thrown.java:12)\n");
 
+		
 		testCompile("Minimal", true, "", "");
-
+		
 		testCompileAndRun(false, "GameCharacter_pre", true, "",
 				"No exception was thrown! :-(\n" +
 				"No exception was thrown! :-(\n");
@@ -498,13 +741,13 @@ public class s4jie2TestSuite {
 	    		"----------\n"
 	    		+ "1. ERROR in SOURCE_FILE_FULL_PATH (at line 8)\n"
 	    		+ "	* @throws IllegalArgumentException | 10000 <= y\n"
+	    		+ "	                                     ^^^^^^^^^^\n"
+	    		+ "Type mismatch: cannot convert from Object to boolean\n"
+	    		+ "----------\n"
+	    		+ "2. ERROR in SOURCE_FILE_FULL_PATH (at line 8)\n"
+	    		+ "	* @throws IllegalArgumentException | 10000 <= y\n"
 	    		+ "	                                              ^\n"
 	    		+ "y cannot be resolved to a variable\n"
-	    		+ "----------\n"
-	    		+ "2. ERROR in SOURCE_FILE_FULL_PATH (at line 10)\n"
-	    		+ "	*    | 10000 <= z\n"
-	    		+ "	                ^\n"
-	    		+ "The field Foo.z is not visible\n"
 	    		+ "----------\n"
 	    		+ "3. ERROR in SOURCE_FILE_FULL_PATH (at line 11)\n"
 	    		+ "	* @throws IlegalArgumentExeption | true\n"
@@ -513,24 +756,26 @@ public class s4jie2TestSuite {
 	    		+ "----------\n"
 	    		+ "4. ERROR in SOURCE_FILE_FULL_PATH (at line 15)\n"
 	    		+ "	*    | 5000 <= y\n"
+	    		+ "	       ^^^^^^^^^\n"
+	    		+ "Type mismatch: cannot convert from Object to boolean\n"
+	    		+ "----------\n"
+	    		+ "5. ERROR in SOURCE_FILE_FULL_PATH (at line 15)\n"
+	    		+ "	*    | 5000 <= y\n"
 	    		+ "	               ^\n"
 	    		+ "y cannot be resolved to a variable\n"
 	    		+ "----------\n"
-	    		+ "5. ERROR in SOURCE_FILE_FULL_PATH (at line 16)\n"
-	    		+ "	* @may_throw IllegalArgumentException | 5000 <= z \n"
-	    		+ "	                                                ^\n"
-	    		+ "The field Foo.z is not visible\n"
-	    		+ "----------\n"
-	    		+ "5 problems (5 errors)\n");
-	    testCompileAndRun(true, "throws_may_throw_success", true,
+	    		+ "5 problems (5 errors)\n"
+	    		+ "");
+	    testPartOfStringCompileAndRun(true, "throws_may_throw_success", true,
 	    		"Caught the IAE\n" +
 	    		"Caught the IAE\n",
-	    		"java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
-	    		+ "	at Main.foo$post(throws_may_throw_success.java:4)\n"
+	    		"SEVERE: The thrown exception was not specified in the formal specification\n"
+	    		+ "java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
+	    		+ "	at Main.foo$post(throws_may_throw_success.java:8)\n"
 	    		+ "	at Main.foo(throws_may_throw_success.java:13)\n"
 	    		+ "	at Main.main(throws_may_throw_success.java:33)\n"
 	    		+ "java.lang.AssertionError: @throws condition holds but specified exception type not thrown\n"
-	    		+ "	at Main.foo$post(throws_may_throw_success.java:5)\n"
+	    		+ "	at Main.foo$post(throws_may_throw_success.java:8)\n"
 	    		+ "	at Main.foo(throws_may_throw_success.java:13)\n"
 	    		+ "	at Main.main(throws_may_throw_success.java:42)\n");
 	    testCompile("invariants_syntax_error", false, "",

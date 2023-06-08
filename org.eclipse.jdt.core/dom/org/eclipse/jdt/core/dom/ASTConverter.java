@@ -3321,6 +3321,10 @@ class ASTConverter {
 			for (int i = 0; i < catchArgumentsLength; i++) {
 				CatchClause catchClause = new CatchClause(this.ast);
 				int catchClauseSourceStart = retrieveStartingCatchPosition(start, catchArguments[i].sourceStart);
+				if (catchClauseSourceStart == -1) {
+					continue; // Skip catch block if this was added by FormalSpecification.resolve()
+					
+				}
 				catchClause.setSourceRange(catchClauseSourceStart, catchBlocks[i].sourceEnd - catchClauseSourceStart + 1);
 				catchClause.setBody(convert(catchBlocks[i]));
 				catchClause.setException(convert(catchArguments[i]));
