@@ -1226,6 +1226,23 @@ public class ClassFile implements TypeConstants, TypeIds {
 					LambdaExpression preconditionLambda = method.formalSpecification.preconditionLambda;
 					preconditionLambda.performCodeGenerationTimeFixups(type.binding);
 					
+					this.codeStream.aload_0();
+					this.codeStream.invokeObjectGetClass();
+					this.codeStream.ldc(type.binding);
+					BranchLabel check = new BranchLabel(this.codeStream);
+					this.codeStream.if_acmpne(check);
+					
+					this.codeStream.aload_0();
+					if (method.arguments != null)
+						for (Argument argument : method.arguments)
+							this.codeStream.load(argument.binding);
+					this.codeStream.invoke(type.binding.isInterface() ? Opcodes.OPC_invokeinterface : Opcodes.OPC_invokevirtual, method.binding, type.binding);
+					
+					BranchLabel done = new BranchLabel(this.codeStream);
+					this.codeStream.goto_(done);
+					
+					check.place();
+					
 					if (!preconditionLambda.binding.isStatic())
 						this.codeStream.aload_0();
 					for (SyntheticArgumentBinding local : preconditionLambda.outerLocalVariables) {
@@ -1256,6 +1273,8 @@ public class ClassFile implements TypeConstants, TypeIds {
 						this.codeStream.invoke(Opcodes.OPC_invokeinterface, postconditionMethod, constantPoolDeclaringClass);
 					}
 					
+					done.place();
+					
 					switch (method.binding.returnType.id) {
 						case TypeIds.T_void:
 							this.codeStream.return_();
@@ -1281,7 +1300,7 @@ public class ClassFile implements TypeConstants, TypeIds {
 							break;
 					}
 					
-					this.completeCodeAttribute(codeAttributeOffset, null);
+					this.completeCodeAttribute(codeAttributeOffset, method.scope);
 					attributeNumber++;
 					this.completeMethodInfo(methodBinding, methodAttributeOffset, attributeNumber);
 				}
